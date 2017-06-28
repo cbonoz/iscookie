@@ -1,0 +1,62 @@
+<resources>
+    <string name="app_name">Is Cookie</string>
+
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="app_tutorial_name">CryptoFire - Tutorial</string>
+    <string name="app_slogan">Cryptocurrencies for everyone.</string>
+
+    <string name="title_coins">Research</string>
+    <string name="title_stats">Alerts</string>
+    <string name="title_alerts">Configure</string>
+    <string name="title_settings">Settings</string>
+    <string name="title_support">Support</string>
+
+    <!-- Strings related to login -->
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="password_email_sent">password email sent</string>
+    <string name="enter_email">Please enter your email</string>
+    <string name="enter_question">Enter your Question</string>
+
+    <string name="action_sign_in">Sign in</string>
+    <string name="action_register">Register</string>
+    <!--<string name="error_invalid_email">This email address is invalid</string>-->
+    <!--<string name="error_invalid_password">This password is too short</string>-->
+    <string name="auth_failed">Invalid username or password</string>
+    <string name="create_user_success">Success! Please login with your credentials</string>
+    <string name="error_field_required">This field is required</string>
+
+
+    <string name="app_logo_desc">Is Cookie Logo</string>
+    <string name="main_welcome_text">Welcome to Is Cookie</string>
+    <string name="slogan">Crytocurrencies for Everyone.</string>
+
+    <string name="action_settings">Settings</string>
+    <string name="about_file">file:///android_asset/about.html</string>
+
+    <string name="loading">Loading</string>
+    <string name="not_applicable">N/A</string>
+
+
+
+    <string name="back_to_menu">Back to Menu</string>
+
+    <!--Error text-->
+    <string name="internet_error">Could not connect to Internet service</string>
+    <string name="connection_error">Connection Error</string>
+    <string name="unknown_error">Unknown error loading page</string>
+    <string name="result_fragment_error">Could not start results page</string>
+
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
+    <string name="reset">Reset</string>
+    <string name="done">Done</string>
+    <string name="save">Save</string>
+    <string name="cancelled">Cancelled</string>
+    <string name="clear_history">Clear History</string>
+    <string name="save_and_play">Save and Play</string>
+
+</resources>
