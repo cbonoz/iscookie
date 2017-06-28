@@ -59,4 +59,7 @@
     <string name="clear_history">Clear History</string>
     <string name="save_and_play">Save and Play</string>
 
+    <string name="camera_error">This device doesn\'t support Camera2 API.</string>
+    <string name="camera_permission_required">Camera Permission Required for App</string>
+
 </resources>

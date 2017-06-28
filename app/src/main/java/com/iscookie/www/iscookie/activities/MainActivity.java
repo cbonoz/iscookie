@@ -12,6 +12,7 @@ import android.media.ImageReader.OnImageAvailableListener;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.os.Trace;
+import android.util.Size;
 import android.util.TypedValue;
 import android.view.Display;
 
@@ -21,14 +22,18 @@ import android.view.ViewGroup;
 
 import com.github.jinatonic.confetti.CommonConfetti;
 import com.github.jinatonic.confetti.ConfettiManager;
-import com.iscookie.www.iscookie.OverlayView.DrawCallback;
+import com.iscookie.www.iscookie.Classifier;
+import com.iscookie.www.iscookie.Classifier.Recognition;
+import com.iscookie.www.iscookie.R;
+import com.iscookie.www.iscookie.TensorFlowImageClassifier;
+import com.iscookie.www.iscookie.views.OverlayView.DrawCallback;
 import com.iscookie.www.iscookie.activities.helper.CameraActivity;
 import com.iscookie.www.iscookie.activities.helper.ConfettiActivity;
 import com.iscookie.www.iscookie.utils.ImageUtils;
-import com.iscookie.www.iscookie.utils.Size;
 import com.iscookie.www.iscookie.views.BorderedText;
 import com.iscookie.www.iscookie.views.ResultsView;
 
+import java.util.List;
 import java.util.Vector;
 
 import timber.log.Timber;
@@ -93,7 +98,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
     @Override
     protected int getLayoutId() {
-        return R.layout.camera_connection_fragment;
+        return R.layout.fragment_camera_connection;
     }
 
     @Override
@@ -222,12 +227,11 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                     @Override
                     public void run() {
                         final long startTime = SystemClock.uptimeMillis();
-                        final List<Classifier.Recognition> results = classifier.recognizeImage(croppedBitmap);
+                        final List<Recognition> results = classifier.recognizeImage(croppedBitmap);
                         lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
 
                         cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
                         showImageResults(results);
-//                        resultsView.setResults(results);
                         requestRender();
                         computing = false;
                     }
@@ -278,7 +282,8 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
     private void showImageResults(final List<Classifier.Recognition> results) {
         Timber.d("showImageResults: " + results);
 
-
+        resultsView.setResults(results);
+        // Show the share overlay on top of the classified image.
         showShareView();
     }
 
@@ -290,7 +295,6 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
     private void hideShareView() {
         Timber.d("hideShareView");
-
     }
 
     // ** Confetti Activity Logic Below ** //

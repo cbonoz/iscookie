@@ -1,7 +1,12 @@
 package com.iscookie.www.iscookie.fragments;
 
+import android.Manifest;
+import android.Manifest.permission;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.util.Size;
 import android.view.LayoutInflater;
@@ -14,7 +19,6 @@ import com.iscookie.www.iscookie.views.AutoFitTextureView;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.DialogFragment;
 import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.graphics.ImageFormat;
@@ -53,6 +57,8 @@ import java.util.concurrent.TimeUnit;
 import timber.log.Timber;
 
 public class CameraConnectionFragment extends Fragment {
+
+    private final int CAMERA_PERMISSION_CODE = 101;
 
     public CameraConnectionFragment() {
 
@@ -378,21 +384,19 @@ public class CameraConnectionFragment extends Fragment {
                 }
 
                 // For still image captures, we use the largest available size.
-                final Size largest =
-                        Collections.max(
-                                Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888)),
-                                new CompareSizesByArea());
+                final Size largest = Collections.max(
+                        Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888)),
+                        new CompareSizesByArea());
 
                 sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
 
                 // Danger, W.R.! Attempting to use too large a preview size could  exceed the camera
                 // bus' bandwidth limitation, resulting in gorgeous previews but the storage of
                 // garbage capture data.
-                previewSize =
-                        chooseOptimalSize(
-                                map.getOutputSizes(SurfaceTexture.class),
-                                inputSize.getWidth(),
-                                inputSize.getHeight());
+                previewSize = chooseOptimalSize(
+                        map.getOutputSizes(SurfaceTexture.class),
+                        inputSize.getWidth(),
+                        inputSize.getHeight());
 
                 // We fit the aspect ratio of TextureView to the size of preview we picked.
                 final int orientation = getResources().getConfiguration().orientation;
@@ -411,8 +415,7 @@ public class CameraConnectionFragment extends Fragment {
             // device this code runs.
             // TODO(andrewharp): abstract ErrorDialog/RuntimeException handling out into new method and
             // reuse throughout app.
-            ErrorDialog.newInstance(getString(R.string.camera_error))
-                    .show(getChildFragmentManager(), FRAGMENT_DIALOG);
+            ErrorDialog.newInstance(getString(R.string.camera_error)).show(getFragmentManager(), FRAGMENT_DIALOG);
             throw new RuntimeException(getString(R.string.camera_error));
         }
 
@@ -431,11 +434,48 @@ public class CameraConnectionFragment extends Fragment {
             if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("Time out waiting to lock camera opening.");
             }
-            manager.openCamera(cameraId, stateCallback, backgroundHandler);
+            try {
+                manager.openCamera(cameraId, stateCallback, backgroundHandler);
+            } catch (SecurityException e) {
+                ActivityCompat.requestPermissions(getActivity(),
+                        new String[]{permission.CAMERA},
+                        CAMERA_PERMISSION_CODE);
+            }
         } catch (final CameraAccessException e) {
             Timber.e(e, "Exception!");
         } catch (final InterruptedException e) {
             throw new RuntimeException("Interrupted while trying to lock camera opening.", e);
+        }
+    }
+
+    private void makeToast(final String msg) {
+        Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+            String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case CAMERA_PERMISSION_CODE: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if (textureView.isAvailable()) {
+                        openCamera(textureView.getWidth(), textureView.getHeight());
+                    } else {
+                        textureView.setSurfaceTextureListener(surfaceTextureListener);
+                    }
+                    // permission was granted, yay! Do the
+                    // contacts-related task you need to do.
+
+                } else {
+                    makeToast(getString(R.string.camera_permission_required));
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                }
+            }
+            default: // other permissions this app might request..
+                break;
         }
     }
 

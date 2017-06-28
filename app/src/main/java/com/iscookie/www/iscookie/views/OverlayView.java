@@ -1,4 +1,4 @@
-package com.iscookie.www.iscookie;
+package com.iscookie.www.iscookie.views;
 
 
 import android.content.Context;
