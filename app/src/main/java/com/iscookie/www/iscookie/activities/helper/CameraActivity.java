@@ -143,17 +143,7 @@ public abstract class CameraActivity extends AppCompatActivity implements OnImag
     }
 
     protected void setFragment() {
-        final Fragment fragment = CameraConnectionFragment.newInstance(
-                new CameraConnectionFragment.ConnectionCallback() {
-                    @Override
-                    public void onPreviewSizeChosen(android.util.Size size, int cameraRotation) {
-                        CameraActivity.this.onPreviewSizeChosen(size, cameraRotation);
-                    }
-
-                },
-                this,
-                getLayoutId(),
-                getDesiredPreviewFrameSize());
+        final Fragment fragment = CameraConnectionFragment.newInstance(getLayoutId(), getDesiredPreviewFrameSize());
 
         getSupportFragmentManager()
                 .beginTransaction()
@@ -206,7 +196,7 @@ public abstract class CameraActivity extends AppCompatActivity implements OnImag
         return super.onKeyDown(keyCode, event);
     }
 
-    protected abstract void onPreviewSizeChosen(final android.util.Size size, final int rotation);
+    public abstract void onPreviewSizeChosen(final android.util.Size size, final int rotation);
 
     protected abstract int getLayoutId();
 

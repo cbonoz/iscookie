@@ -32,15 +32,13 @@ public class SplashActivity extends AwesomeSplash {
         Timber.d("Splash duration: " + duration);
 
         //Customize Circular Reveal
-        configSplash.setBackgroundColor(R.color.primary); //any color you want form colors.xml
+        configSplash.setBackgroundColor(R.color.primary_light); //any color you want form colors.xml
         configSplash.setAnimCircularRevealDuration(duration); //int ms
         configSplash.setRevealFlagX(Flags.REVEAL_RIGHT);  //or Flags.REVEAL_LEFT
         configSplash.setRevealFlagY(Flags.REVEAL_BOTTOM); //or Flags.REVEAL_TOP
 
-        //Choose LOGO OR PATH; if you don't provide String value for path it's logo by default
-
         //Customize Logo
-        configSplash.setLogoSplash(R.mipmap.ic_launcher); //or any other drawable
+        configSplash.setLogoSplash(R.drawable.cookie_logo_175); //or any other drawable
         configSplash.setAnimLogoSplashDuration(duration); //int ms
         configSplash.setAnimLogoSplashTechnique(
                 Techniques.Bounce); //choose one form Techniques (ref: https://github.com/daimajia/AndroidViewAnimations)
@@ -51,7 +49,6 @@ public class SplashActivity extends AwesomeSplash {
         configSplash.setTitleTextSize(30f); //float value
         configSplash.setAnimTitleDuration(duration);
         configSplash.setAnimTitleTechnique(Techniques.FlipInX);
-        configSplash.setTitleFont("fonts/myfont.ttf"); //provide string to your font located in assets/fonts/
 
     }
 

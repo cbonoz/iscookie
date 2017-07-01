@@ -16,6 +16,8 @@ import java.util.Vector;
 import org.tensorflow.Operation;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
+import timber.log.Timber;
+
 /** A classifier specialized to label images using TensorFlow. */
 public class TensorFlowImageClassifier implements Classifier {
     private static final String TAG = "TensorFlowImageClassifier";
@@ -73,7 +75,7 @@ public class TensorFlowImageClassifier implements Classifier {
         // Read the label names into memory.
         // TODO(andrewharp): make this handle non-assets.
         String actualFilename = labelFilename.split("file:///android_asset/")[1];
-        Log.i(TAG, "Reading labels from: " + actualFilename);
+        Timber.i(TAG, "Reading labels from: " + actualFilename);
         BufferedReader br = null;
         try {
             br = new BufferedReader(new InputStreamReader(assetManager.open(actualFilename)));
@@ -91,7 +93,7 @@ public class TensorFlowImageClassifier implements Classifier {
         // The shape of the output is [N, NUM_CLASSES], where N is the batch size.
         final Operation operation = c.inferenceInterface.graphOperation(outputName);
         final int numClasses = (int) operation.output(0).shape().size(1);
-        Log.i(TAG, "Read " + c.labels.size() + " labels, output layer size is " + numClasses);
+        Timber.i(TAG, "Read " + c.labels.size() + " labels, output layer size is " + numClasses);
 
         // Ideally, inputSize could have been retrieved from the shape of the input operation.  Alas,
         // the placeholder node for input in the graphdef typically used does not specify a shape, so it

@@ -14,6 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.iscookie.www.iscookie.R;
+import com.iscookie.www.iscookie.activities.helper.CameraActivity;
 import com.iscookie.www.iscookie.views.AutoFitTextureView;
 
 import android.app.Activity;
@@ -59,6 +60,14 @@ import timber.log.Timber;
 public class CameraConnectionFragment extends Fragment {
 
     private final int CAMERA_PERMISSION_CODE = 101;
+
+    private final ConnectionCallback cameraConnectionCallback = new CameraConnectionFragment.ConnectionCallback() {
+        @Override
+        public void onPreviewSizeChosen(android.util.Size size, int cameraRotation) {
+            ((CameraActivity) getActivity()).onPreviewSizeChosen(size, cameraRotation);
+        }
+
+    };
 
     public CameraConnectionFragment() {
 
@@ -216,31 +225,17 @@ public class CameraConnectionFragment extends Fragment {
     /**
      * A {@link OnImageAvailableListener} to receive frames as they are available.
      */
-    private final OnImageAvailableListener imageListener;
+    private OnImageAvailableListener imageListener;
 
     /**
      * The input size in pixels desired by TensorFlow (width and height of a square bitmap).
      */
-    private final Size inputSize;
+    private Size inputSize;
 
     /**
      * The layout identifier to inflate for this Fragment.
      */
-    private final int layout;
-
-
-    private final ConnectionCallback cameraConnectionCallback;
-
-    private CameraConnectionFragment(
-            final ConnectionCallback connectionCallback,
-            final OnImageAvailableListener imageListener,
-            final int layout,
-            final Size inputSize) {
-        this.cameraConnectionCallback = connectionCallback;
-        this.imageListener = imageListener;
-        this.layout = layout;
-        this.inputSize = inputSize;
-    }
+    private int layout;
 
     /**
      * Shows a {@link Toast} on the UI thread.
@@ -310,17 +305,22 @@ public class CameraConnectionFragment extends Fragment {
         }
     }
 
-    public static CameraConnectionFragment newInstance(
-            final ConnectionCallback callback,
-            final OnImageAvailableListener imageListener,
-            final int layout,
-            final Size inputSize) {
-        return new CameraConnectionFragment(callback, imageListener, layout, inputSize);
+    public static CameraConnectionFragment newInstance(final int layout, final Size inputSize) {
+        Bundle args = new Bundle();
+        args.putInt("layout", layout);
+        args.putSize("size", inputSize);
+
+        CameraConnectionFragment fragment = new CameraConnectionFragment();
+        fragment.setArguments(args);
+        return fragment;
     }
 
     @Override
-    public View onCreateView(
-            final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState) {
+    public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState) {
+        final Bundle bundle = getArguments();
+        this.layout = bundle.getInt("layout");
+        this.inputSize = bundle.getSize("size");
+
         return inflater.inflate(layout, container, false);
     }
 
