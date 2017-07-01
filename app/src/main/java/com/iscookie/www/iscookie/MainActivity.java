@@ -404,9 +404,10 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         private void showResultToast(final String message, final int color, final int resultIcon) {
             SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_BUTTON)
                     .setText(message)
-                    .setDuration(Style.DURATION_LONG)
+                    .setDuration(Style.DURATION_VERY_LONG)
                     .setFrame(Style.FRAME_LOLLIPOP)
                     .setHeight(300)
+                    .setTextSize(30)
                     .setTextColor(getColor(R.color.white))
                     .setIconResource(resultIcon)
                     .setGravity(Gravity.TOP)
@@ -447,7 +448,6 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                             }
                         }
                     });
-                    takeShareableScreenshot();
                     break;
                 case FAIL:
                     resultLayout.setVisibility(View.GONE);
@@ -461,8 +461,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     // ** Social Sharing Intent ** //
 
     private Bitmap takeShareableScreenshot() {
-        cameraActionLayout.setVisibility(View.GONE);
-        resultLayout.setVisibility(View.GONE);
+//        cameraActionLayout.setVisibility(View.GONE);
+//        resultLayout.setVisibility(View.GONE);
         try {
             // create bitmap screen capture
             View v1 = getWindow().getDecorView().getRootView();
@@ -474,10 +474,11 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             makeToast(e.toString());
             Timber.e("Error capturing screenshot: " + e.toString());
             return null;
-        } finally {
-            cameraActionLayout.setVisibility(View.VISIBLE);
-            resultLayout.setVisibility(View.VISIBLE);
         }
+//        finally {
+//            cameraActionLayout.setVisibility(View.VISIBLE);
+//            resultLayout.setVisibility(View.VISIBLE);
+//        }
     }
 
     private void takeAndSaveScreenshot() {

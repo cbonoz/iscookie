@@ -22,7 +22,9 @@ public class ImageUtils {
             "Comparing images on other planets",
             "Intense Classification happening",
             "Deep in thought",
-            "Wondering if this is a sock"
+            "Wondering if this is a sock",
+            "Guessing what this image is",
+            "Pulling a noun for this image out of a hat"
     );
 
     public static String getRandomLoadingMessage() {
