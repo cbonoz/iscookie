@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private static final String INPUT_NAME = "input";
     private static final String OUTPUT_NAME = "output";
 
-    private static final float CONFIDENCE_THRESHOLD = .5f;
+    private static final float CONFIDENCE_THRESHOLD = .3f;
 
     private static final String MODEL_FILE = "file:///android_asset/tensorflow_inception_graph.pb";
     private static final String LABEL_FILE = "file:///android_asset/imagenet_comp_graph_label_strings.txt";
@@ -118,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 
         btnToggleCamera = (Button) findViewById(R.id.btnToggleCamera);
         btnDetectObject = (Button) findViewById(R.id.btnDetectObject);
-        loadingSpinner = (SpinKitView)  findViewById(R.id.loadingSpinner);
+        loadingSpinner = (SpinKitView) findViewById(R.id.loadingSpinner);
 
         loadingSpinner.setVisibility(View.VISIBLE);
         btnDetectObject.setVisibility(View.GONE);
@@ -151,11 +151,10 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     }
 
     private void showLoadingDialog() {
-        loadingDialog = new MaterialDialog.Builder(this)
+        loadingDialog = new MaterialDialog.Builder(MainActivity.this)
                 .title(R.string.loading)
                 .content(ImageUtils.getRandomLoadingMessage())
-                .progress(true, 0)
-                .show();
+                .progress(true, 0).show();
     }
 
     private void hideLoadingDialog() {
@@ -167,16 +166,18 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private void showResultOverlay(final List<Classifier.Recognition> results) {
         textViewResult.setText(results.toString());
         if (!results.isEmpty()) {
-            Classifier.Recognition bestResult = results.get(0);
-            if (bestResult.getConfidence() > CONFIDENCE_THRESHOLD) {
-                // Show positive message/overlay to the user.
-                makeToast("COOKIE");
-                generateOnce().animate();
-                playSound(dingId);
-            } else {
-                makeToast("Not sure what this is");
-                playSound(booId);
+            for (Classifier.Recognition result : results) {
+                if (result.getConfidence() > CONFIDENCE_THRESHOLD) {
+                    // Show positive message/overlay to the user.
+                    makeToast("COOKIE");
+                    generateOnce().animate();
+                    playSound(dingId);
+                    return;
+                }
             }
+
+            makeToast("Not sure what this is");
+            playSound(booId);
         }
     }
 
@@ -189,12 +190,14 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     @Override
     protected void onPause() {
         cameraView.stop();
+        hideLoadingDialog();
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        hideLoadingDialog();
         executor.execute(new Runnable() {
             @Override
             public void run() {
