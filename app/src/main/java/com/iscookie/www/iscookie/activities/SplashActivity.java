@@ -1,11 +1,10 @@
 package com.iscookie.www.iscookie.activities;
 
 import android.content.Intent;
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 
 import com.daimajia.androidanimations.library.Techniques;
 import com.iscookie.www.iscookie.BuildConfig;
+import com.iscookie.www.iscookie.MainActivity;
 import com.iscookie.www.iscookie.R;
 import com.viksaa.sssplash.lib.activity.AwesomeSplash;
 import com.viksaa.sssplash.lib.cnst.Flags;
@@ -17,7 +16,6 @@ public class SplashActivity extends AwesomeSplash {
 
     //DO NOT OVERRIDE onCreate()!
     //if you need to start some services do it in initSplash()!
-
 
     @Override
     public void initSplash(ConfigSplash configSplash) {
@@ -32,7 +30,7 @@ public class SplashActivity extends AwesomeSplash {
         Timber.d("Splash duration: " + duration);
 
         //Customize Circular Reveal
-        configSplash.setBackgroundColor(R.color.primary_light); //any color you want form colors.xml
+        configSplash.setBackgroundColor(R.color.white); //any color you want form colors.xml
         configSplash.setAnimCircularRevealDuration(duration); //int ms
         configSplash.setRevealFlagX(Flags.REVEAL_RIGHT);  //or Flags.REVEAL_LEFT
         configSplash.setRevealFlagY(Flags.REVEAL_BOTTOM); //or Flags.REVEAL_TOP
@@ -45,7 +43,7 @@ public class SplashActivity extends AwesomeSplash {
 
         //Customize Title
         configSplash.setTitleSplash(getString(R.string.app_name));
-        configSplash.setTitleTextColor(R.color.black);
+        configSplash.setTitleTextColor(R.color.md_deep_orange_A200);
         configSplash.setTitleTextSize(30f); //float value
         configSplash.setAnimTitleDuration(duration);
         configSplash.setAnimTitleTechnique(Techniques.FlipInX);

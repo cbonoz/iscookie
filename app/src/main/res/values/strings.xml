@@ -62,4 +62,8 @@
     <string name="camera_error">This device doesn\'t support Camera2 API.</string>
     <string name="camera_permission_required">Camera Permission Required for App</string>
 
+    <string name="toggle_camera">Toggle Camera</string>
+    <string name="detect_object">Detect Object</string>
+    <string name="classifier_error">Error: Could not initialize classifier, try again.</string>
+
 </resources>

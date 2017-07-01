@@ -5,6 +5,7 @@ import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.os.Trace;
 import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -13,13 +14,17 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Vector;
+
 import org.tensorflow.Operation;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
 import timber.log.Timber;
 
-/** A classifier specialized to label images using TensorFlow. */
+/**
+ * A classifier specialized to label images using TensorFlow.
+ */
 public class TensorFlowImageClassifier implements Classifier {
+
     private static final String TAG = "TensorFlowImageClassifier";
 
     // Only return this many results with at least this confidence.
@@ -44,20 +49,20 @@ public class TensorFlowImageClassifier implements Classifier {
 
     private TensorFlowInferenceInterface inferenceInterface;
 
-    private TensorFlowImageClassifier() {}
+    private TensorFlowImageClassifier() {
+    }
 
     /**
      * Initializes a native TensorFlow session for classifying images.
      *
-     * @param assetManager The asset manager to be used to load assets.
+     * @param assetManager  The asset manager to be used to load assets.
      * @param modelFilename The filepath of the model GraphDef protocol buffer.
      * @param labelFilename The filepath of label file for classes.
-     * @param inputSize The input size. A square image of inputSize x inputSize is assumed.
-     * @param imageMean The assumed mean of the image values.
-     * @param imageStd The assumed std of the image values.
-     * @param inputName The label of the image input node.
-     * @param outputName The label of the output node.
-     * @throws IOException
+     * @param inputSize     The input size. A square image of inputSize x inputSize is assumed.
+     * @param imageMean     The assumed mean of the image values.
+     * @param imageStd      The assumed std of the image values.
+     * @param inputName     The label of the image input node.
+     * @param outputName    The label of the output node.
      */
     public static Classifier create(
             AssetManager assetManager,
@@ -85,7 +90,7 @@ public class TensorFlowImageClassifier implements Classifier {
             }
             br.close();
         } catch (IOException e) {
-            throw new RuntimeException("Problem reading label file!" , e);
+            throw new RuntimeException("Problem reading label file!", e);
         }
 
         c.inferenceInterface = new TensorFlowInferenceInterface(assetManager, modelFilename);
@@ -103,7 +108,7 @@ public class TensorFlowImageClassifier implements Classifier {
         c.imageStd = imageStd;
 
         // Pre-allocate buffers.
-        c.outputNames = new String[] {outputName};
+        c.outputNames = new String[]{outputName};
         c.intValues = new int[inputSize * inputSize];
         c.floatValues = new float[inputSize * inputSize * 3];
         c.outputs = new float[numClasses];
@@ -145,22 +150,21 @@ public class TensorFlowImageClassifier implements Classifier {
 
         // Find the best classifications.
         PriorityQueue<Recognition> pq =
-                new PriorityQueue<Recognition>(
-                        3,
-                        new Comparator<Recognition>() {
-                            @Override
-                            public int compare(Recognition lhs, Recognition rhs) {
-                                // Intentionally reversed to put high confidence at the head of the queue.
-                                return Float.compare(rhs.getConfidence(), lhs.getConfidence());
-                            }
-                        });
+                new PriorityQueue<Recognition>(3, new Comparator<Recognition>() {
+                    @Override
+                    public int compare(Recognition lhs, Recognition rhs) {
+                        // Intentionally reversed to put high confidence at the head of the queue.
+                        return Float.compare(rhs.getConfidence(), lhs.getConfidence());
+                    }
+                });
+
         for (int i = 0; i < outputs.length; ++i) {
             if (outputs[i] > THRESHOLD) {
-                pq.add(
-                        new Recognition(
-                                "" + i, labels.size() > i ? labels.get(i) : "unknown", outputs[i], null));
+                pq.add(new Recognition(
+                        "" + i, labels.size() > i ? labels.get(i) : "unknown", outputs[i], null));
             }
         }
+
         final ArrayList<Recognition> recognitions = new ArrayList<Recognition>();
         int recognitionsSize = Math.min(pq.size(), MAX_RESULTS);
         for (int i = 0; i < recognitionsSize; ++i) {

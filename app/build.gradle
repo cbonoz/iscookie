@@ -60,6 +60,7 @@ dependencies {
         exclude group: 'org.json', module: 'json'
     }
 
+    compile 'com.flurgle:camerakit:0.9.13'
     compile 'com.github.jinatonic.confetti:confetti:1.1.0'
     compile 'org.tensorflow:tensorflow-android:+'
     compile 'com.jakewharton.timber:timber:4.5.1'
