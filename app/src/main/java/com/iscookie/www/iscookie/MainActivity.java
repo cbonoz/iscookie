@@ -39,15 +39,11 @@ import com.github.jinatonic.confetti.ConfettiManager;
 import com.github.ybq.android.spinkit.SpinKitView;
 import com.iscookie.www.iscookie.activities.helper.ConfettiActivity;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import timber.log.Timber;
-
-import static android.R.attr.id;
 
 public class MainActivity extends AppCompatActivity implements ConfettiActivity {
 
@@ -56,6 +52,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private static final float IMAGE_STD = 1;
     private static final String INPUT_NAME = "input";
     private static final String OUTPUT_NAME = "output";
+
+    private static final float CONFIDENCE_THRESHOLD = .5f;
 
     private static final String MODEL_FILE = "file:///android_asset/tensorflow_inception_graph.pb";
     private static final String LABEL_FILE = "file:///android_asset/imagenet_comp_graph_label_strings.txt";
@@ -153,10 +151,10 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private void showResultOverlay(final List<Classifier.Recognition> results) {
         if (!results.isEmpty()) {
             Classifier.Recognition bestResult = results.get(0);
-            if (bestResult.getConfidence() > .5) {
+            if (bestResult.getConfidence() > CONFIDENCE_THRESHOLD) {
+                // Show positive message/overlay to the user.
                 makeToast("COOKIE");
                 generateOnce().animate();
-
             } else {
                 makeToast("Not sure what this is");
             }
@@ -206,6 +204,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                         @Override
                         public void run() {
                             makeToast(getString(R.string.classifier_error));
+                            Timber.e("Error creating classifier: " + e.getMessage());
                         }
                     });
                 }
