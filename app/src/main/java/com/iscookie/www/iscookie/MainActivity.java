@@ -31,11 +31,13 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.text.method.ScrollingMovementMethod;
+import android.view.Gravity;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,6 +46,8 @@ import com.flurgle.camerakit.CameraListener;
 import com.flurgle.camerakit.CameraView;
 import com.github.jinatonic.confetti.CommonConfetti;
 import com.github.jinatonic.confetti.ConfettiManager;
+import com.github.johnpersano.supertoasts.library.Style;
+import com.github.johnpersano.supertoasts.library.SuperActivityToast;
 import com.github.ybq.android.spinkit.SpinKitView;
 import com.iscookie.www.iscookie.activities.helper.ConfettiActivity;
 import com.iscookie.www.iscookie.utils.ClassificationTaskResult;
@@ -74,58 +78,65 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 
     private static Classifier classifier = null; // Tensorflow classifier.
     private Executor executor = Executors.newSingleThreadExecutor();
+
+    // Main layout views.
+    private ViewGroup mainContainer;
+    private LinearLayout resultLayout;
+    private LinearLayout cameraActionLayout;
+
+    // Scene components.
     private TextView textViewResult;
     private Button btnDetectObject;
     private Button btnToggleCamera;
-    private SpinKitView loadingSpinner;
+    private SpinKitView loadingTFSpinner;
     private ImageView imageViewResult;
     private CameraView cameraView;
 
     private FancyButton shareButton;
+
+    // TODO: implement muting and unmuting.
+    private ImageView topVolumeView;
+
+    private boolean isMuted = true;
 
     private SoundPool soundPool;
     private boolean poolReady = false;
 
     private int dingId;
     private int booId;
+    private int cheeringId;
 
     private Dialog loadingDialog;
 
-    private void playSound(final int soundId) {
-        AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
-        float actualVolume = (float) audioManager
-                .getStreamVolume(AudioManager.STREAM_MUSIC);
-        float maxVolume = (float) audioManager
-                .getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-        float volume = actualVolume / maxVolume;
-        if (poolReady) {
-            soundPool.play(soundId, volume, volume, 1, 0, 1f);
-        } else {
-            Timber.e("Sound file for id " + soundId + " was not ready to be played");
-        }
-    }
+    private AudioManager audioManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
+        // Setup activity helper classes.
         setUpConfetti();
+        setUpSoundpool();
 
-        soundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 1);
-        soundPool.setOnLoadCompleteListener(new OnLoadCompleteListener() {
-            @Override
-            public void onLoadComplete(SoundPool soundPool, int sampleId,
-                    int status) {
-                poolReady = true;
-            }
-        });
-        dingId = soundPool.load(this, R.raw.elevator, 1);
-        booId = soundPool.load(this, R.raw.booing, 1);
+        setContentView(R.layout.activity_main);
+        mainContainer = (ViewGroup) findViewById(R.id.container);
 
         cameraView = (CameraView) findViewById(R.id.cameraView);
 
+        topVolumeView = (ImageView) findViewById(R.id.topVolumeView);
+//        topVolumeView.setImageDrawable(); // set volume mute/unmute image based on initial mutesetting.
+        topVolumeView.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Timber.d("muted: " + isMuted);
+                isMuted = !isMuted;
+                // TODO: change the mute logo to muted or unmuted.
+            }
+        });
+
+        cameraActionLayout = (LinearLayout) findViewById(R.id.cameraActionLayout);
+
         // Classification result view items.
+        resultLayout = (LinearLayout) findViewById(R.id.resultLayout);
         imageViewResult = (ImageView) findViewById(R.id.imageViewResult);
         textViewResult = (TextView) findViewById(R.id.textViewResult);
         textViewResult.setMovementMethod(new ScrollingMovementMethod());
@@ -133,9 +144,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 
         btnToggleCamera = (Button) findViewById(R.id.btnToggleCamera);
         btnDetectObject = (Button) findViewById(R.id.btnDetectObject);
-        loadingSpinner = (SpinKitView) findViewById(R.id.loadingSpinner);
+        loadingTFSpinner = (SpinKitView) findViewById(R.id.loadingSpinner);
 
-        loadingSpinner.setVisibility(View.VISIBLE);
         btnDetectObject.setVisibility(View.GONE);
 
         cameraView.setCameraListener(new CameraListener() {
@@ -158,7 +168,14 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         btnDetectObject.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                cameraView.captureImage();
+                try {
+                    cameraView.captureImage();
+                } catch (Exception e) {
+                    makeToast(getString(R.string.camera_error));
+                    // Attempt to restart the camera after a failed image retrieval.
+                    cameraView.stop();
+                    cameraView.start();
+                }
             }
         });
 
@@ -180,20 +197,22 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 
     private boolean renderClassificationResultDisplay(final List<Classifier.Recognition> results) {
         textViewResult.setText(results.toString());
-        if (!results.isEmpty()) {
-            for (Classifier.Recognition result : results) {
-                if (result.getConfidence() > CONFIDENCE_THRESHOLD) {
-                    // Show positive message/overlay to the user.
-                    makeToast("COOKIE");
-                    generateOnce().animate();
-                    playSound(dingId);
-                    return true;
-                }
+        for (Classifier.Recognition result : results) {
+            if (result.getConfidence() > CONFIDENCE_THRESHOLD) {
+                // Show positive message/overlay to the user.
+                makeToast(getString(R.string.target_item) + "!");
+                generateOnce().animate();
+                playSound(cheeringId);
+                return true;
             }
-
-            makeToast("Not sure what this is");
-            playSound(booId);
         }
+
+        if (results.isEmpty()) {
+            makeToast(getString(R.string.empty_result_message));
+        } else {
+            makeToast("Not a " + getString(R.string.target_item));
+        }
+        playSound(booId);
         // didn't successfully find the app object (current target: cookie).
         return false;
     }
@@ -218,13 +237,18 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         executor.execute(new Runnable() {
             @Override
             public void run() {
-                classifier.close();
+                if (classifier != null) {
+                    classifier.close();
+                    classifier = null;
+                }
             }
         });
     }
 
     private void initTensorFlowAndLoadModel() {
         if (classifier == null) {
+            // Show the loading spinner for the tensorflow model.
+            loadingTFSpinner.setVisibility(View.VISIBLE);
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
@@ -250,6 +274,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                     }
                 }
             });
+        } else {
+            btnDetectObject.setVisibility(View.VISIBLE);
         }
     }
 
@@ -262,7 +288,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             @Override
             public void run() {
                 Timber.d("done loading classifier");
-                loadingSpinner.setVisibility(View.GONE);
+                loadingTFSpinner.setVisibility(View.GONE);
                 btnDetectObject.setVisibility(View.VISIBLE);
             }
         });
@@ -278,11 +304,36 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         Timber.d("hideShareView");
     }
 
+    private void playSound(final int soundId) {
+        final float actualVolume = (float) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+        final float maxVolume = (float) audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        final float volume = actualVolume / maxVolume;
+        if (poolReady) {
+            soundPool.play(soundId, volume, volume, 1, 0, 1f);
+        } else {
+            Timber.e("Sound file for id " + soundId + " was not ready to be played");
+        }
+    }
+
+    private void setUpSoundpool() {
+        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        soundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 1);
+        soundPool.setOnLoadCompleteListener(new OnLoadCompleteListener() {
+            @Override
+            public void onLoadComplete(SoundPool soundPool, int sampleId,
+                    int status) {
+                poolReady = true;
+            }
+        });
+        dingId = soundPool.load(this, R.raw.elevator, 1);
+        booId = soundPool.load(this, R.raw.booing, 1);
+        cheeringId = soundPool.load(this, R.raw.cheering, 1);
+    }
+
     // ** Confetti Activity Logic Below ** //
 
     private void setUpConfetti() {
         Timber.d("setUpConfetti");
-        container = (ViewGroup) findViewById(R.id.container);
         final Resources res = getResources();
         goldDark = res.getColor(R.color.gold_dark);
         goldMed = res.getColor(R.color.gold_med);
@@ -291,25 +342,24 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         colors = new int[]{goldDark, goldMed, gold, goldLight};
     }
 
-    protected ViewGroup container;
     protected int goldDark, goldMed, gold, goldLight;
     private int[] colors;
 
     @Override
     public ConfettiManager generateOnce() {
-        return CommonConfetti.rainingConfetti(container, colors)
+        return CommonConfetti.rainingConfetti(mainContainer, colors)
                 .oneShot();
     }
 
     @Override
     public ConfettiManager generateStream() {
-        return CommonConfetti.rainingConfetti(container, colors)
+        return CommonConfetti.rainingConfetti(mainContainer, colors)
                 .stream(3000);
     }
 
     @Override
     public ConfettiManager generateInfinite() {
-        return CommonConfetti.rainingConfetti(container, colors)
+        return CommonConfetti.rainingConfetti(mainContainer, colors)
                 .infinite();
     }
 
@@ -331,10 +381,10 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             try {
                 Bitmap bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.length);
                 scaledBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
-                results = classifier.recognizeImage(bitmap);
+                results = classifier.recognizeImage(scaledBitmap);
                 Timber.d("classification results: " + results.toString());
             } catch (Exception e) {
-                Timber.e(e.getStackTrace().toString());
+                Timber.e("error in classification task: " + e.toString());
                 errorMessage = e.toString();
                 return ClassificationTaskResult.FAIL;
             }
@@ -351,11 +401,35 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             return ClassificationTaskResult.SUCCESS;
         }
 
+        private void showResultToast(final String message, final int color, final int resultIcon) {
+            SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_BUTTON)
+                    .setText(message)
+                    .setDuration(Style.DURATION_LONG)
+                    .setFrame(Style.FRAME_LOLLIPOP)
+                    .setHeight(300)
+                    .setTextColor(getColor(R.color.white))
+                    .setIconResource(resultIcon)
+                    .setGravity(Gravity.TOP)
+                    .setColor(getColor(color))
+                    .setAnimations(Style.ANIMATIONS_FLY).show();
+        }
+
         protected void onPostExecute(final ClassificationTaskResult exitCode) {
             switch (exitCode) {
                 case SUCCESS:
-                    imageViewResult.setImageBitmap(scaledBitmap);
+                    // Render the results to the screen
                     final boolean foundItem = renderClassificationResultDisplay(results);
+                    if (foundItem) {
+                        shareButton.setBackgroundColor(getColor(R.color.md_green_500));
+                        shareButton.setText(getString(R.string.share_success));
+                        showResultToast(getString(R.string.target_item) + "!", R.color.md_green_500, R.drawable.check_mark_75);
+                    } else {
+                        shareButton.setBackgroundColor(getColor(R.color.md_red_500));
+                        shareButton.setText(getString(R.string.share_failure));
+                        showResultToast("Not " + getString(R.string.target_item) + "!", R.color.md_red_500, R.drawable.x_mark_75);
+                    }
+                    resultLayout.setVisibility(View.VISIBLE);
+                    imageViewResult.setImageBitmap(scaledBitmap);
                     shareButton.setOnClickListener(new OnClickListener() {
                         @Override
                         public void onClick(View v) {
@@ -367,11 +441,16 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                                 imageDescription = "I failed";
                             }
                             Timber.d("hit share button, share message set to: " + imageDescription);
-                            shareClassifierResult(scaledBitmap,  imageDescription);
+                            final Bitmap screenShot = takeShareableScreenshot();
+                            if (screenShot != null) {
+                                shareClassifierResult(screenShot, imageDescription);
+                            }
                         }
                     });
+                    takeShareableScreenshot();
                     break;
                 case FAIL:
+                    resultLayout.setVisibility(View.GONE);
                     makeToast(errorMessage);
                     break;
             }
@@ -381,7 +460,27 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 
     // ** Social Sharing Intent ** //
 
-    private void takeScreenshot() {
+    private Bitmap takeShareableScreenshot() {
+        cameraActionLayout.setVisibility(View.GONE);
+        resultLayout.setVisibility(View.GONE);
+        try {
+            // create bitmap screen capture
+            View v1 = getWindow().getDecorView().getRootView();
+            v1.setDrawingCacheEnabled(true);
+            return Bitmap.createBitmap(v1.getDrawingCache());
+        } catch (Throwable e) {
+            // Several error may come out with file handling or OOM
+            e.printStackTrace();
+            makeToast(e.toString());
+            Timber.e("Error capturing screenshot: " + e.toString());
+            return null;
+        } finally {
+            cameraActionLayout.setVisibility(View.VISIBLE);
+            resultLayout.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void takeAndSaveScreenshot() {
         // https://stackoverflow.com/questions/2661536/how-to-programmatically-take-a-screenshot-in-android
         // Using filename for screenshot file name (will be overwritten each time a photo is taken).
         final String fileName = getString(R.string.app_name);
@@ -393,7 +492,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             // create bitmap screen capture
             View v1 = getWindow().getDecorView().getRootView();
             v1.setDrawingCacheEnabled(true);
-            Bitmap bitmap = Bitmap.createBitmap(v1.getDrawingCache());
+            final Bitmap bitmap = Bitmap.createBitmap(v1.getDrawingCache());
+
             v1.setDrawingCacheEnabled(false);
 
             File imageFile = new File(mPath);
@@ -408,6 +508,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         } catch (Throwable e) {
             // Several error may come out with file handling or OOM
             e.printStackTrace();
+            makeToast(e.toString());
+            Timber.e("Error capturing screenshot: " + e.toString());
         }
     }
 

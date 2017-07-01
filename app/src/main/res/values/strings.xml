@@ -5,6 +5,7 @@
 
     <string name="app_tutorial_name">CryptoFire - Tutorial</string>
     <string name="app_slogan">Cryptocurrencies for everyone.</string>
+    <string name="target_item">Cookie</string>
 
     <string name="title_coins">Research</string>
     <string name="title_stats">Alerts</string>
@@ -59,16 +60,22 @@
     <string name="clear_history">Clear History</string>
     <string name="save_and_play">Save and Play</string>
 
-    <string name="camera_error">This device doesn\'t support Camera2 API.</string>
+    <string name="camera_error">There was a problem taking the picture, try again.</string>
+    <string name="camera_unsupported">This device doesn\'t support Camera2 API.</string>
     <string name="camera_permission_required">Camera Permission Required for App</string>
 
     <string name="toggle_camera">Toggle Camera</string>
-    <string name="detect_object">Detect Object</string>
+    <string name="detect_object">Detect!</string>
     <string name="classifier_error">Error: Could not initialize classifier, try again.</string>
     <string name="share_result_prompt">Share result via</string>
 
     <!--Font awesome icons-->
     <string name="icon_share">&#xf064;</string>
     <string name="share_result">Share Result</string>
+
+    <string name="volume_desc">Toggle Volume</string>
+    <string name="share_failure">Share Failure</string>
+    <string name="share_success">Share Success</string>
+    <string name="empty_result_message">Not sure what this is</string>
 
 </resources>

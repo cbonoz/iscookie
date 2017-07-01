@@ -415,8 +415,8 @@ public class CameraConnectionFragment extends Fragment {
             // device this code runs.
             // TODO(andrewharp): abstract ErrorDialog/RuntimeException handling out into new method and
             // reuse throughout app.
-            ErrorDialog.newInstance(getString(R.string.camera_error)).show(getFragmentManager(), FRAGMENT_DIALOG);
-            throw new RuntimeException(getString(R.string.camera_error));
+            ErrorDialog.newInstance(getString(R.string.camera_unsupported)).show(getFragmentManager(), FRAGMENT_DIALOG);
+            throw new RuntimeException(getString(R.string.camera_unsupported));
         }
 
         cameraConnectionCallback.onPreviewSizeChosen(previewSize, sensorOrientation);

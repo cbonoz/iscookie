@@ -13,6 +13,28 @@
         android:layout_height="match_parent"
         android:layout_gravity="center|top" />
 
+    <ImageView
+        android:id="@+id/topVolumeView"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_gravity="top|start"
+        android:layout_margin="18dp"
+        android:alpha="0.5"
+        android:contentDescription="@string/volume_desc"
+        android:scaleType="fitXY" />
+
+    <ImageView
+        android:id="@+id/topLogoView"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="10dp"
+        android:alpha="0.5"
+        android:contentDescription="@string/app_name"
+        android:scaleType="fitXY"
+        android:src="@drawable/cookie_logo" />
+
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -22,11 +44,13 @@
 
 
         <LinearLayout
+            android:id="@+id/resultLayout"
             android:layout_width="match_parent"
             android:layout_height="80dp"
             android:layout_gravity="center|top"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:visibility="gone">
 
             <ImageView
                 android:id="@+id/imageViewResult"
@@ -37,21 +61,20 @@
             <TextView
                 android:id="@+id/textViewResult"
                 android:layout_width="0dp"
-                android:layout_weight="1"
                 android:layout_height="80dp"
+                android:layout_weight="1"
                 android:fadeScrollbars="false"
                 android:gravity="center"
                 android:maxLines="15"
                 android:scrollbars="vertical"
                 android:textColor="@android:color/black" />
-                android:layout_height="wrap_content"/>
 
             <mehdi.sakout.fancybuttons.FancyButton
                 android:id="@+id/shareButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:padding="10dp"
                 android:layout_marginRight="10dp"
+                android:padding="10dp"
                 fancy:fb_borderColor="#FFFFFF"
                 fancy:fb_borderWidth="1dp"
                 fancy:fb_defaultColor="#3b5998"
@@ -61,48 +84,54 @@
                 fancy:fb_iconPosition="right"
                 fancy:fb_radius="30dp"
                 fancy:fb_text="@string/share_result"
-                fancy:fb_textColor="#FFFFFF"/>
-
-
-
-
-
+                fancy:fb_textColor="#FFFFFF" />
         </LinearLayout>
 
-        <FrameLayout
+
+        <LinearLayout
+            android:id="@+id/cameraActionLayout"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_gravity="bottom|center">
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center"
+            android:orientation="vertical">
+
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_gravity="bottom|center">
+
+                <Button
+                    android:id="@+id/btnDetectObject"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="@string/detect_object"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/black"
+                    android:visibility="invisible" />
+
+                <com.github.ybq.android.spinkit.SpinKitView
+                    android:id="@+id/loadingSpinner"
+                    style="@style/SpinKitView.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center"
+                    android:visibility="invisible"
+                    app:SpinKit_Color="@color/primary" />
+
+            </FrameLayout>
 
             <Button
-                android:id="@+id/btnDetectObject"
+                android:id="@+id/btnToggleCamera"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="@string/detect_object"
+                android:layout_height="48dp"
+                android:layout_gravity="bottom|center"
+                android:text="@string/toggle_camera"
                 android:textAllCaps="false"
                 android:textColor="@android:color/black"
-                android:visibility="invisible" />
+                android:visibility="visible" />
 
-            <com.github.ybq.android.spinkit.SpinKitView
-                android:id="@+id/loadingSpinner"
-                style="@style/SpinKitView.Small"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_gravity="center"
-                android:visibility="invisible"
-                app:SpinKit_Color="@color/primary" />
-
-        </FrameLayout>
-
-        <Button
-            android:id="@+id/btnToggleCamera"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_gravity="bottom|center"
-            android:text="@string/toggle_camera"
-            android:textAllCaps="false"
-            android:visibility="visible"
-            android:textColor="@android:color/black" />
+        </LinearLayout>
 
     </LinearLayout>
 
