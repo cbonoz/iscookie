@@ -16,12 +16,14 @@
 
 package com.iscookie.www.iscookie;
 
+import android.app.Dialog;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.media.SoundPool.OnLoadCompleteListener;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.method.ScrollingMovementMethod;
@@ -32,12 +34,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.afollestad.materialdialogs.MaterialDialog;
 import com.flurgle.camerakit.CameraListener;
 import com.flurgle.camerakit.CameraView;
 import com.github.jinatonic.confetti.CommonConfetti;
 import com.github.jinatonic.confetti.ConfettiManager;
 import com.github.ybq.android.spinkit.SpinKitView;
 import com.iscookie.www.iscookie.activities.helper.ConfettiActivity;
+import com.iscookie.www.iscookie.utils.ImageUtils;
 
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -73,6 +77,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private int dingId;
     private int booId;
 
+    private Dialog loadingDialog;
+
     private void playSound(final int soundId) {
         AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         float actualVolume = (float) audioManager
@@ -91,6 +97,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        setUpConfetti();
 
         soundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 1);
         soundPool.setOnLoadCompleteListener(new OnLoadCompleteListener() {
@@ -118,17 +126,11 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         cameraView.setCameraListener(new CameraListener() {
             @Override
             public void onPictureTaken(byte[] picture) {
+                showLoadingDialog();
+
                 super.onPictureTaken(picture);
 
-                Bitmap bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.length);
-                bitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
-                imageViewResult.setImageBitmap(bitmap);
-
-                final List<Classifier.Recognition> results = classifier.recognizeImage(bitmap);
-
-                textViewResult.setText(results.toString());
-                // playSound(dingId);
-                showResultOverlay(results);
+                new ClassifyImageTask().execute(picture);
             }
         });
 
@@ -148,15 +150,32 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         initTensorFlowAndLoadModel();
     }
 
+    private void showLoadingDialog() {
+        loadingDialog = new MaterialDialog.Builder(this)
+                .title(R.string.loading)
+                .content(ImageUtils.getRandomLoadingMessage())
+                .progress(true, 0)
+                .show();
+    }
+
+    private void hideLoadingDialog() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+        }
+    }
+
     private void showResultOverlay(final List<Classifier.Recognition> results) {
+        textViewResult.setText(results.toString());
         if (!results.isEmpty()) {
             Classifier.Recognition bestResult = results.get(0);
             if (bestResult.getConfidence() > CONFIDENCE_THRESHOLD) {
                 // Show positive message/overlay to the user.
                 makeToast("COOKIE");
                 generateOnce().animate();
+                playSound(dingId);
             } else {
                 makeToast("Not sure what this is");
+                playSound(booId);
             }
         }
     }
@@ -227,7 +246,6 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         });
     }
 
-
     // ** Show or Hide the share button overlay on the current view.
 
     private void showShareView() {
@@ -271,5 +289,29 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     public ConfettiManager generateInfinite() {
         return CommonConfetti.rainingConfetti(container, colors)
                 .infinite();
+    }
+
+    private class ClassifyImageTask extends AsyncTask<byte[], Integer, Long> {
+
+        private Bitmap scaledBitmap;
+        private List<Classifier.Recognition> results;
+
+        protected Long doInBackground(byte[]... pictures) {
+            int count = pictures.length;
+            Timber.d("ClassifyImageTask with " + count + " byte array params (should be 1)");
+            final byte[] picture = pictures[0];
+
+            Bitmap bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.length);
+            scaledBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
+
+            results = classifier.recognizeImage(bitmap);
+            return 1L;
+        }
+
+        protected void onPostExecute(Long exitCode) {
+            imageViewResult.setImageBitmap(scaledBitmap);
+            showResultOverlay(results);
+            hideLoadingDialog();
+        }
     }
 }

@@ -6,6 +6,9 @@ import android.graphics.Matrix;
 import android.os.Environment;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 import java.util.logging.Logger;
 
 import timber.log.Timber;
@@ -14,6 +17,20 @@ import timber.log.Timber;
  * Utility class for manipulating images.
  **/
 public class ImageUtils {
+
+    private static final List<String> LOADING_MESSAGES = Arrays.asList(
+            "Comparing images on other planets",
+            "Intense Classification happening",
+            "Deep in thought",
+            "Wondering if this is a sock"
+    );
+
+    public static String getRandomLoadingMessage() {
+        Random r = new Random();
+        final int index = r.nextInt(LOADING_MESSAGES.size());
+        return LOADING_MESSAGES.get(index);
+
+    }
 
     static {
         try {
