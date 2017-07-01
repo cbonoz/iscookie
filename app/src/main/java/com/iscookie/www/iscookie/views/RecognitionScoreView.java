@@ -8,7 +8,7 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.View;
 
-import com.iscookie.www.iscookie.Classifier.Recognition;
+import com.iscookie.www.iscookie.utils.Classifier.Recognition;
 
 import java.util.List;
 

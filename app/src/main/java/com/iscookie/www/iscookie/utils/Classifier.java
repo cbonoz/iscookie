@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package com.iscookie.www.iscookie;
+package com.iscookie.www.iscookie.utils;
 
 import android.graphics.Bitmap;
 import android.graphics.RectF;

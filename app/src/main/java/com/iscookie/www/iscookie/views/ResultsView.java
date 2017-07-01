@@ -1,7 +1,7 @@
 package com.iscookie.www.iscookie.views;
 
 
-import com.iscookie.www.iscookie.Classifier.Recognition;
+import com.iscookie.www.iscookie.utils.Classifier.Recognition;
 
 import java.util.List;
 

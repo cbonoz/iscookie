@@ -41,6 +41,8 @@ import com.github.jinatonic.confetti.CommonConfetti;
 import com.github.jinatonic.confetti.ConfettiManager;
 import com.github.ybq.android.spinkit.SpinKitView;
 import com.iscookie.www.iscookie.activities.helper.ConfettiActivity;
+import com.iscookie.www.iscookie.utils.ClassificationTaskResult;
+import com.iscookie.www.iscookie.utils.Classifier;
 import com.iscookie.www.iscookie.utils.ImageUtils;
 
 import java.util.List;
@@ -62,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private static final String MODEL_FILE = "file:///android_asset/tensorflow_inception_graph.pb";
     private static final String LABEL_FILE = "file:///android_asset/imagenet_comp_graph_label_strings.txt";
 
-    private Classifier classifier;
+    private static Classifier classifier = null; // Tensorflow classifier.
     private Executor executor = Executors.newSingleThreadExecutor();
     private TextView textViewResult;
     private Button btnDetectObject;
@@ -207,31 +209,33 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     }
 
     private void initTensorFlowAndLoadModel() {
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    classifier = TensorFlowImageClassifier.create(
-                            getAssets(),
-                            MODEL_FILE,
-                            LABEL_FILE,
-                            INPUT_SIZE,
-                            IMAGE_MEAN,
-                            IMAGE_STD,
-                            INPUT_NAME,
-                            OUTPUT_NAME);
-                    doneLoadingClassifier();
-                } catch (final Exception e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            makeToast(getString(R.string.classifier_error));
-                            Timber.e("Error creating classifier: " + e.getMessage());
-                        }
-                    });
+        if (classifier == null) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        classifier = TensorFlowImageClassifier.create(
+                                getAssets(),
+                                MODEL_FILE,
+                                LABEL_FILE,
+                                INPUT_SIZE,
+                                IMAGE_MEAN,
+                                IMAGE_STD,
+                                INPUT_NAME,
+                                OUTPUT_NAME);
+                        doneLoadingClassifier();
+                    } catch (final Exception e) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                makeToast(getString(R.string.classifier_error));
+                                Timber.e("Error creating classifier: " + e.getMessage());
+                            }
+                        });
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     private void makeToast(final String msg) {
@@ -294,26 +298,38 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                 .infinite();
     }
 
-    private class ClassifyImageTask extends AsyncTask<byte[], Integer, Long> {
+    private class ClassifyImageTask extends AsyncTask<byte[], Integer, ClassificationTaskResult> {
 
         private Bitmap scaledBitmap;
         private List<Classifier.Recognition> results;
 
-        protected Long doInBackground(byte[]... pictures) {
-            int count = pictures.length;
+        private String errorMessage = null;
+
+        protected ClassificationTaskResult doInBackground(byte[]... pictures) {
+            final int count = pictures.length;
             Timber.d("ClassifyImageTask with " + count + " byte array params (should be 1)");
             final byte[] picture = pictures[0];
-
-            Bitmap bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.length);
-            scaledBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
-
-            results = classifier.recognizeImage(bitmap);
-            return 1L;
+            try {
+                Bitmap bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.length);
+                scaledBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
+                results = classifier.recognizeImage(bitmap);
+                return ClassificationTaskResult.SUCCESS;
+            } catch (Exception e) {
+                errorMessage = e.getMessage();
+                return ClassificationTaskResult.FAIL;
+            }
         }
 
-        protected void onPostExecute(Long exitCode) {
-            imageViewResult.setImageBitmap(scaledBitmap);
-            showResultOverlay(results);
+        protected void onPostExecute(final ClassificationTaskResult exitCode) {
+            switch (exitCode) {
+                case SUCCESS:
+                    imageViewResult.setImageBitmap(scaledBitmap);
+                    showResultOverlay(results);
+                    break;
+                case FAIL:
+                    makeToast(errorMessage);
+                    break;
+            }
             hideLoadingDialog();
         }
     }

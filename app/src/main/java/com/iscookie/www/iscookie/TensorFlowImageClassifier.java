@@ -4,7 +4,8 @@ package com.iscookie.www.iscookie;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.os.Trace;
-import android.util.Log;
+
+import com.iscookie.www.iscookie.utils.Classifier;
 
 import java.io.BufferedReader;
 import java.io.IOException;
