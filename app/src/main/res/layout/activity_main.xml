@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:fancy="http://schemas.android.com/apk/res-auto"
     android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-
 
     <!--Order of elements on the page is defined by the order in which the items are placed in this file-->
     <com.flurgle.camerakit.CameraView
@@ -36,13 +36,34 @@
 
             <TextView
                 android:id="@+id/textViewResult"
-                android:layout_width="match_parent"
+                android:layout_weight="1"
                 android:layout_height="80dp"
                 android:fadeScrollbars="false"
                 android:gravity="center"
                 android:maxLines="15"
                 android:scrollbars="vertical"
                 android:textColor="@android:color/black" />
+
+                android:layout_height="wrap_content"/>
+            <mehdi.sakout.fancybuttons.FancyButton
+                android:id="@+id/shareButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                fancy:fb_borderColor="#FFFFFF"
+                fancy:fb_borderWidth="1dp"
+                fancy:fb_defaultColor="#3b5998"
+                fancy:fb_focusColor="#5577bd"
+                fancy:fb_fontIconResource="@string/icon_share"
+                fancy:fb_fontIconSize="15sp"
+                fancy:fb_iconPosition="right"
+                fancy:fb_radius="30dp"
+                fancy:fb_text="@string/share_result"
+                fancy:fb_textColor="#FFFFFF"/>
+
+
+
+
 
         </LinearLayout>
 

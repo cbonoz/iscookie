@@ -1,6 +1,7 @@
 package com.iscookie.www.iscookie.activities;
 
 import android.content.Intent;
+import android.util.Log;
 
 import com.daimajia.androidanimations.library.Techniques;
 import com.iscookie.www.iscookie.BuildConfig;
@@ -11,14 +12,28 @@ import com.viksaa.sssplash.lib.cnst.Flags;
 import com.viksaa.sssplash.lib.model.ConfigSplash;
 
 import timber.log.Timber;
+import timber.log.Timber.DebugTree;
 
 public class SplashActivity extends AwesomeSplash {
 
     //DO NOT OVERRIDE onCreate()!
     //if you need to start some services do it in initSplash()!
 
+    private void setUpTimber() {
+
+        if (BuildConfig.DEBUG) {
+            Timber.plant(new DebugTree());
+        }
+//        else {
+            // No logging in non-debug builds.
+            // Timber.plant(new CrashReportingTree());
+//        }
+        Timber.d("finishing setting up timber in " + Timber.asTree().getClass() + " mode");
+    }
+
     @Override
     public void initSplash(ConfigSplash configSplash) {
+        setUpTimber();
 
         final int duration;
         if (BuildConfig.DEBUG) {

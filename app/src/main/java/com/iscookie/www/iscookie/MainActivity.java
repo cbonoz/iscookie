@@ -17,17 +17,22 @@
 package com.iscookie.www.iscookie;
 
 import android.app.Dialog;
+import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.media.SoundPool.OnLoadCompleteListener;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.text.method.ScrollingMovementMethod;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -45,10 +50,13 @@ import com.iscookie.www.iscookie.utils.ClassificationTaskResult;
 import com.iscookie.www.iscookie.utils.Classifier;
 import com.iscookie.www.iscookie.utils.ImageUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import mehdi.sakout.fancybuttons.FancyButton;
 import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity implements ConfettiActivity {
@@ -72,6 +80,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private SpinKitView loadingSpinner;
     private ImageView imageViewResult;
     private CameraView cameraView;
+
+    private FancyButton shareButton;
 
     private SoundPool soundPool;
     private boolean poolReady = false;
@@ -114,9 +124,12 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         booId = soundPool.load(this, R.raw.booing, 1);
 
         cameraView = (CameraView) findViewById(R.id.cameraView);
+
+        // Classification result view items.
         imageViewResult = (ImageView) findViewById(R.id.imageViewResult);
         textViewResult = (TextView) findViewById(R.id.textViewResult);
         textViewResult.setMovementMethod(new ScrollingMovementMethod());
+        shareButton = (FancyButton) findViewById(R.id.shareButton);
 
         btnToggleCamera = (Button) findViewById(R.id.btnToggleCamera);
         btnDetectObject = (Button) findViewById(R.id.btnDetectObject);
@@ -129,9 +142,9 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             @Override
             public void onPictureTaken(byte[] picture) {
                 showLoadingDialog();
-
                 super.onPictureTaken(picture);
 
+                Timber.d("starting ClassifyImageTask with picture length " + picture.length);
                 new ClassifyImageTask().execute(picture);
             }
         });
@@ -165,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         }
     }
 
-    private void showResultOverlay(final List<Classifier.Recognition> results) {
+    private boolean renderClassificationResultDisplay(final List<Classifier.Recognition> results) {
         textViewResult.setText(results.toString());
         if (!results.isEmpty()) {
             for (Classifier.Recognition result : results) {
@@ -174,13 +187,15 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                     makeToast("COOKIE");
                     generateOnce().animate();
                     playSound(dingId);
-                    return;
+                    return true;
                 }
             }
 
             makeToast("Not sure what this is");
             playSound(booId);
         }
+        // didn't successfully find the app object (current target: cookie).
+        return false;
     }
 
     @Override
@@ -229,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                             @Override
                             public void run() {
                                 makeToast(getString(R.string.classifier_error));
-                                Timber.e("Error creating classifier: " + e.getMessage());
+                                Timber.e("Error creating classifier: " + e.toString());
                             }
                         });
                     }
@@ -300,12 +315,16 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 
     private class ClassifyImageTask extends AsyncTask<byte[], Integer, ClassificationTaskResult> {
 
+        private static final long MIN_TASK_TIME_MS = 3000;
+
         private Bitmap scaledBitmap;
         private List<Classifier.Recognition> results;
 
         private String errorMessage = null;
+        private long taskTime;
 
         protected ClassificationTaskResult doInBackground(byte[]... pictures) {
+            final long startTime = System.currentTimeMillis();
             final int count = pictures.length;
             Timber.d("ClassifyImageTask with " + count + " byte array params (should be 1)");
             final byte[] picture = pictures[0];
@@ -313,18 +332,44 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                 Bitmap bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.length);
                 scaledBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
                 results = classifier.recognizeImage(bitmap);
-                return ClassificationTaskResult.SUCCESS;
+                Timber.d("classification results: " + results.toString());
             } catch (Exception e) {
-                errorMessage = e.getMessage();
+                Timber.e(e.getStackTrace().toString());
+                errorMessage = e.toString();
                 return ClassificationTaskResult.FAIL;
             }
+
+            taskTime = System.currentTimeMillis() - startTime;
+            if (taskTime < MIN_TASK_TIME_MS) {
+                try {
+                    Thread.sleep(MIN_TASK_TIME_MS - taskTime);
+                } catch (InterruptedException e) {
+                    Timber.e("finishing task, interrupted during min task time sleep: " + e);
+                }
+            }
+
+            return ClassificationTaskResult.SUCCESS;
         }
 
         protected void onPostExecute(final ClassificationTaskResult exitCode) {
             switch (exitCode) {
                 case SUCCESS:
                     imageViewResult.setImageBitmap(scaledBitmap);
-                    showResultOverlay(results);
+                    final boolean foundItem = renderClassificationResultDisplay(results);
+                    shareButton.setOnClickListener(new OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            // Image description used for the social share message.
+                            final String imageDescription;
+                            if (foundItem) {
+                                imageDescription = "Successful find!";
+                            } else {
+                                imageDescription = "I failed";
+                            }
+                            Timber.d("hit share button, share message set to: " + imageDescription);
+                            shareClassifierResult(scaledBitmap,  imageDescription);
+                        }
+                    });
                     break;
                 case FAIL:
                     makeToast(errorMessage);
@@ -333,4 +378,55 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             hideLoadingDialog();
         }
     }
+
+    // ** Social Sharing Intent ** //
+
+    private void takeScreenshot() {
+        // https://stackoverflow.com/questions/2661536/how-to-programmatically-take-a-screenshot-in-android
+        // Using filename for screenshot file name (will be overwritten each time a photo is taken).
+        final String fileName = getString(R.string.app_name);
+
+        try {
+            // image naming and path  to include sd card  appending name you choose for file
+            String mPath = Environment.getExternalStorageDirectory().toString() + "/" + fileName + ".jpg";
+
+            // create bitmap screen capture
+            View v1 = getWindow().getDecorView().getRootView();
+            v1.setDrawingCacheEnabled(true);
+            Bitmap bitmap = Bitmap.createBitmap(v1.getDrawingCache());
+            v1.setDrawingCacheEnabled(false);
+
+            File imageFile = new File(mPath);
+
+            FileOutputStream outputStream = new FileOutputStream(imageFile);
+            int quality = 100;
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream);
+            outputStream.flush();
+            outputStream.close();
+
+            openScreenshot(imageFile);
+        } catch (Throwable e) {
+            // Several error may come out with file handling or OOM
+            e.printStackTrace();
+        }
+    }
+
+    private void openScreenshot(File imageFile) {
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_VIEW);
+        Uri uri = Uri.fromFile(imageFile);
+        intent.setDataAndType(uri, "image/*");
+        startActivity(intent);
+    }
+
+    private void shareClassifierResult(final Bitmap bitmap, final String imageDescription) {
+        String path = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, imageDescription, null);
+        Uri uri = Uri.parse(path);
+
+        Intent tweetIntent = new Intent(Intent.ACTION_SEND);
+        tweetIntent.setType("image/jpeg");
+        tweetIntent.putExtra(Intent.EXTRA_STREAM, uri);
+        startActivity(Intent.createChooser(tweetIntent, getString(R.string.share_result_prompt)));
+    }
+
 }

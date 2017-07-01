@@ -65,5 +65,10 @@
     <string name="toggle_camera">Toggle Camera</string>
     <string name="detect_object">Detect Object</string>
     <string name="classifier_error">Error: Could not initialize classifier, try again.</string>
+    <string name="share_result_prompt">Share result via</string>
+
+    <!--Font awesome icons-->
+    <string name="icon_share">&#xf064;</string>
+    <string name="share_result">Share Result</string>
 
 </resources>
