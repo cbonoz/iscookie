@@ -27,7 +27,6 @@ import android.media.SoundPool.OnLoadCompleteListener;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.text.method.ScrollingMovementMethod;
@@ -52,10 +51,9 @@ import com.github.ybq.android.spinkit.SpinKitView;
 import com.iscookie.www.iscookie.activities.helper.ConfettiActivity;
 import com.iscookie.www.iscookie.utils.ClassificationTaskResult;
 import com.iscookie.www.iscookie.utils.Classifier;
+import com.iscookie.www.iscookie.utils.Classifier.Recognition;
 import com.iscookie.www.iscookie.utils.ImageUtils;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -65,19 +63,21 @@ import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity implements ConfettiActivity {
 
-    private static final int INPUT_SIZE = 224;
-    private static final int IMAGE_MEAN = 117;
-    private static final float IMAGE_STD = 1;
-    private static final String INPUT_NAME = "input";
-    private static final String OUTPUT_NAME = "output";
+    private static final int INPUT_SIZE = 299; //224;
+    private static final int IMAGE_MEAN = 128; //117;
+    private static final float IMAGE_STD = 128; //1;
+    private static final String INPUT_NAME = "Mul";
+    private static final String OUTPUT_NAME = "final_result";
 
     private static final float CONFIDENCE_THRESHOLD = .3f;
 
-    private static final String MODEL_FILE = "file:///android_asset/tensorflow_inception_graph.pb";
-    private static final String LABEL_FILE = "file:///android_asset/imagenet_comp_graph_label_strings.txt";
+    private static final String MODEL_FILE = "file:///android_asset/stripped_retrained_graph.pb"; //tensorflow_inception_graph.pb";
+    private static final String LABEL_FILE = "file:///android_asset/retrained_labels.txt"; // imagenet_comp_graph_label_strings.txt";
 
     private static Classifier classifier = null; // Tensorflow classifier.
     private Executor executor = Executors.newSingleThreadExecutor();
+
+    private static Bitmap lastScreenShot;
 
     // Main layout views.
     private ViewGroup mainContainer;
@@ -102,7 +102,6 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private SoundPool soundPool;
     private boolean poolReady = false;
 
-    private int dingId;
     private int booId;
     private int cheeringId;
 
@@ -118,9 +117,11 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         setUpSoundpool();
 
         setContentView(R.layout.activity_main);
-        mainContainer = (ViewGroup) findViewById(R.id.container);
+        Timber.d("onCreate, after setContentView");
 
+        mainContainer = (ViewGroup) findViewById(R.id.container);
         cameraView = (CameraView) findViewById(R.id.cameraView);
+        // cameraView.refreshDrawableState();
 
         topVolumeView = (ImageView) findViewById(R.id.topVolumeView);
 //        topVolumeView.setImageDrawable(); // set volume mute/unmute image based on initial mutesetting.
@@ -195,15 +196,15 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         }
     }
 
-    private boolean renderClassificationResultDisplay(final List<Classifier.Recognition> results) {
+    private Recognition renderClassificationResultDisplay(final List<Recognition> results) {
         textViewResult.setText(results.toString());
-        for (Classifier.Recognition result : results) {
+        for (Recognition result : results) {
             if (result.getConfidence() > CONFIDENCE_THRESHOLD) {
                 // Show positive message/overlay to the user.
                 makeToast(getString(R.string.target_item) + "!");
                 generateOnce().animate();
                 playSound(cheeringId);
-                return true;
+                return result;
             }
         }
 
@@ -214,7 +215,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         }
         playSound(booId);
         // didn't successfully find the app object (current target: cookie).
-        return false;
+        return null;
     }
 
     @Override
@@ -246,37 +247,38 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     }
 
     private void initTensorFlowAndLoadModel() {
-        if (classifier == null) {
-            // Show the loading spinner for the tensorflow model.
-            loadingTFSpinner.setVisibility(View.VISIBLE);
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        classifier = TensorFlowImageClassifier.create(
-                                getAssets(),
-                                MODEL_FILE,
-                                LABEL_FILE,
-                                INPUT_SIZE,
-                                IMAGE_MEAN,
-                                IMAGE_STD,
-                                INPUT_NAME,
-                                OUTPUT_NAME);
-                        doneLoadingClassifier();
-                    } catch (final Exception e) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                makeToast(getString(R.string.classifier_error));
-                                Timber.e("Error creating classifier: " + e.toString());
-                            }
-                        });
-                    }
-                }
-            });
-        } else {
+        if (classifier != null) {
             btnDetectObject.setVisibility(View.VISIBLE);
+            return;
         }
+
+        // Show the loading spinner for the tensorflow model.
+        loadingTFSpinner.setVisibility(View.VISIBLE);
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    classifier = TensorFlowImageClassifier.create(
+                            getAssets(),
+                            MODEL_FILE,
+                            LABEL_FILE,
+                            INPUT_SIZE,
+                            IMAGE_MEAN,
+                            IMAGE_STD,
+                            INPUT_NAME,
+                            OUTPUT_NAME);
+                    doneLoadingClassifier();
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            makeToast(getString(R.string.classifier_error));
+                            Timber.e("Error creating classifier: " + e.toString());
+                        }
+                    });
+                }
+            }
+        });
     }
 
     private void makeToast(final String msg) {
@@ -325,7 +327,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                 poolReady = true;
             }
         });
-        dingId = soundPool.load(this, R.raw.elevator, 1);
+//        dingId = soundPool.load(this, R.raw.elevator, 1);
         booId = soundPool.load(this, R.raw.booing, 1);
         cheeringId = soundPool.load(this, R.raw.cheering, 1);
     }
@@ -405,9 +407,8 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_BUTTON)
                     .setText(message)
                     .setDuration(Style.DURATION_VERY_LONG)
-                    .setFrame(Style.FRAME_LOLLIPOP)
-                    .setHeight(300)
-                    .setTextSize(30)
+//                    .setHeight(300)
+//                    .setTextSize(30)
                     .setTextColor(getColor(R.color.white))
                     .setIconResource(resultIcon)
                     .setGravity(Gravity.TOP)
@@ -418,16 +419,16 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         protected void onPostExecute(final ClassificationTaskResult exitCode) {
             switch (exitCode) {
                 case SUCCESS:
-                    // Render the results to the screen
-                    final boolean foundItem = renderClassificationResultDisplay(results);
-                    if (foundItem) {
+                    // If the foundResult is sufficiently confident, show success screen.
+                    final Recognition foundResult  = renderClassificationResultDisplay(results);
+                    if (foundResult != null) {
                         shareButton.setBackgroundColor(getColor(R.color.md_green_500));
                         shareButton.setText(getString(R.string.share_success));
                         showResultToast(getString(R.string.target_item) + "!", R.color.md_green_500, R.drawable.check_mark_75);
                     } else {
                         shareButton.setBackgroundColor(getColor(R.color.md_red_500));
                         shareButton.setText(getString(R.string.share_failure));
-                        showResultToast("Not " + getString(R.string.target_item) + "!", R.color.md_red_500, R.drawable.x_mark_75);
+                        showResultToast("Not a " + getString(R.string.target_item) + "!", R.color.md_red_500, R.drawable.x_mark_75);
                     }
                     resultLayout.setVisibility(View.VISIBLE);
                     imageViewResult.setImageBitmap(scaledBitmap);
@@ -436,20 +437,19 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                         public void onClick(View v) {
                             // Image description used for the social share message.
                             final String imageDescription;
-                            if (foundItem) {
+                            if (foundResult != null) {
                                 imageDescription = "Successful find!";
                             } else {
                                 imageDescription = "I failed";
                             }
                             Timber.d("hit share button, share message set to: " + imageDescription);
-                            final Bitmap screenShot = takeShareableScreenshot();
-                            if (screenShot != null) {
-                                shareClassifierResult(screenShot, imageDescription);
-                            }
+                            shareClassifierResult(imageDescription);
                         }
                     });
+                    // Save the current state of the screen.
+                    lastScreenShot = takeShareableScreenshot();
                     break;
-                case FAIL:
+                case FAIL: // Software error - Unable to classify image.
                     resultLayout.setVisibility(View.GONE);
                     makeToast(errorMessage);
                     break;
@@ -461,6 +461,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     // ** Social Sharing Intent ** //
 
     private Bitmap takeShareableScreenshot() {
+        // https://stackoverflow.com/questions/2661536/how-to-programmatically-take-a-screenshot-in-android
 //        cameraActionLayout.setVisibility(View.GONE);
 //        resultLayout.setVisibility(View.GONE);
         try {
@@ -481,49 +482,13 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 //        }
     }
 
-    private void takeAndSaveScreenshot() {
-        // https://stackoverflow.com/questions/2661536/how-to-programmatically-take-a-screenshot-in-android
-        // Using filename for screenshot file name (will be overwritten each time a photo is taken).
-        final String fileName = getString(R.string.app_name);
-
-        try {
-            // image naming and path  to include sd card  appending name you choose for file
-            String mPath = Environment.getExternalStorageDirectory().toString() + "/" + fileName + ".jpg";
-
-            // create bitmap screen capture
-            View v1 = getWindow().getDecorView().getRootView();
-            v1.setDrawingCacheEnabled(true);
-            final Bitmap bitmap = Bitmap.createBitmap(v1.getDrawingCache());
-
-            v1.setDrawingCacheEnabled(false);
-
-            File imageFile = new File(mPath);
-
-            FileOutputStream outputStream = new FileOutputStream(imageFile);
-            int quality = 100;
-            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream);
-            outputStream.flush();
-            outputStream.close();
-
-            openScreenshot(imageFile);
-        } catch (Throwable e) {
-            // Several error may come out with file handling or OOM
-            e.printStackTrace();
-            makeToast(e.toString());
-            Timber.e("Error capturing screenshot: " + e.toString());
+    private void shareClassifierResult(final String imageDescription) {
+        if (lastScreenShot == null) {
+            makeToast(getString(R.string.taking_new_screenshot));
+            lastScreenShot = takeShareableScreenshot();
         }
-    }
 
-    private void openScreenshot(File imageFile) {
-        Intent intent = new Intent();
-        intent.setAction(Intent.ACTION_VIEW);
-        Uri uri = Uri.fromFile(imageFile);
-        intent.setDataAndType(uri, "image/*");
-        startActivity(intent);
-    }
-
-    private void shareClassifierResult(final Bitmap bitmap, final String imageDescription) {
-        String path = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, imageDescription, null);
+        String path = MediaStore.Images.Media.insertImage(getContentResolver(), lastScreenShot, imageDescription, null);
         Uri uri = Uri.parse(path);
 
         Intent tweetIntent = new Intent(Intent.ACTION_SEND);

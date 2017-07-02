@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:camerakit="http://schemas.android.com/apk/res-auto"
     xmlns:fancy="http://schemas.android.com/apk/res-auto"
     android:id="@+id/container"
     android:layout_width="match_parent"
@@ -11,7 +12,10 @@
         android:id="@+id/cameraView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="center|top" />
+        android:adjustViewBounds="true"
+        camerakit:ckJpegQuality="100"
+        camerakit:ckMethod="standard"
+        camerakit:ckZoom="pinch" />
 
     <ImageView
         android:id="@+id/topVolumeView"
@@ -52,10 +56,12 @@
             android:orientation="horizontal"
             android:visibility="gone">
 
+            <!--was originally 75x75-->
             <ImageView
                 android:id="@+id/imageViewResult"
-                android:layout_width="75dp"
-                android:layout_height="75dp"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:contentDescription="@string/last_classified_image"
                 android:padding="2dp" />
 
             <TextView

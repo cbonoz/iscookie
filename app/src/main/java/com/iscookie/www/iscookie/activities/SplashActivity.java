@@ -1,7 +1,6 @@
 package com.iscookie.www.iscookie.activities;
 
 import android.content.Intent;
-import android.util.Log;
 
 import com.daimajia.androidanimations.library.Techniques;
 import com.iscookie.www.iscookie.BuildConfig;
@@ -39,7 +38,7 @@ public class SplashActivity extends AwesomeSplash {
         if (BuildConfig.DEBUG) {
             duration = 500;
         } else {
-            // Production duration for into splash screen animations.
+            // Altered production duration for into splash screen animations.
             duration = 1000;
         }
         Timber.d("Splash duration: " + duration);
@@ -48,20 +47,21 @@ public class SplashActivity extends AwesomeSplash {
         configSplash.setBackgroundColor(R.color.white); //any color you want form colors.xml
         configSplash.setAnimCircularRevealDuration(duration); //int ms
         configSplash.setRevealFlagX(Flags.REVEAL_RIGHT);  //or Flags.REVEAL_LEFT
-        configSplash.setRevealFlagY(Flags.REVEAL_BOTTOM); //or Flags.REVEAL_TOP
+        configSplash.setRevealFlagY(Flags.REVEAL_TOP); //or Flags.REVEAL_TOP
 
-        //Customize Logo
+        //Customize Logo animation.
         configSplash.setLogoSplash(R.drawable.cookie_logo_175); //or any other drawable
         configSplash.setAnimLogoSplashDuration(duration); //int ms
-        configSplash.setAnimLogoSplashTechnique(
-                Techniques.Bounce); //choose one form Techniques (ref: https://github.com/daimajia/AndroidViewAnimations)
+        // choose one from the list of Techniques (ref: https://github.com/daimajia/AndroidViewAnimations).
+        configSplash.setAnimLogoSplashTechnique(Techniques.FadeIn);
 
-        //Customize Title
+        //Customize Title animation.
         configSplash.setTitleSplash(getString(R.string.app_name));
-        configSplash.setTitleTextColor(R.color.md_deep_orange_A200);
+        configSplash.setTitleTextColor(R.color.md_brown_500);
         configSplash.setTitleTextSize(30f); //float value
         configSplash.setAnimTitleDuration(duration);
-        configSplash.setAnimTitleTechnique(Techniques.FlipInX);
+        configSplash.setAnimTitleTechnique(Techniques.SlideInUp);
+        configSplash.setTitleFont("fonts/volatire.ttf");
 
     }
 
@@ -70,7 +70,6 @@ public class SplashActivity extends AwesomeSplash {
         // tart main activity after animation finished.
         Intent intent = new Intent(this, MainActivity.class);
         startActivity(intent);
-        finish(); // use to wrap up the current activity so the user can't back up to it.
-
+        finish(); // use to wrap up the current activity so the user can't hit back to it.
     }
 }
