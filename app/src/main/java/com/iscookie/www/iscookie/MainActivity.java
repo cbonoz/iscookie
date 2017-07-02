@@ -63,18 +63,29 @@ import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity implements ConfettiActivity {
 
-    private static final int INPUT_SIZE = 299; //224;
-    private static final int IMAGE_MEAN = 128; //117;
-    private static final float IMAGE_STD = 128; //1;
-    private static final String INPUT_NAME = "Mul";
-    private static final String OUTPUT_NAME = "final_result";
+    // for custom model refer to: https://github.com/tensorflow/tensorflow/issues/2883
+//    private static final int INPUT_SIZE = 299;
+//    private static final int IMAGE_MEAN = 128;
+//    private static final float IMAGE_STD = 128;
+//    private static final String INPUT_NAME = "Mul";
+//    private static final String OUTPUT_NAME = "final_result";
+
+//    private static final String MODEL_FILE = "file:///android_asset/stripped_retrained_graph.pb"; //tensorflow_inception_graph.pb";
+//    private static final String LABEL_FILE = "file:///android_asset/retrained_labels.txt"; // imagenet_comp_graph_label_strings.txt";
+
+    // Values for google's inception model (from the original paper findings).
+    private static final int INPUT_SIZE = 224;
+    private static final int IMAGE_MEAN = 117;
+    private static final float IMAGE_STD = 1;
+    private static final String INPUT_NAME = "input";
+    private static final String OUTPUT_NAME = "output";
+
+    private static final String MODEL_FILE = "file:///android_asset/tensorflow_inception_graph.pb";
+    private static final String LABEL_FILE = "file:///android_asset/imagenet_comp_graph_label_strings.txt";
 
     private static final float CONFIDENCE_THRESHOLD = .3f;
 
-    private static final String MODEL_FILE = "file:///android_asset/stripped_retrained_graph.pb"; //tensorflow_inception_graph.pb";
-    private static final String LABEL_FILE = "file:///android_asset/retrained_labels.txt"; // imagenet_comp_graph_label_strings.txt";
-
-    private static Classifier classifier = null; // Tensorflow classifier.
+    private static Classifier classifier; // Tensorflow classifier.
     private Executor executor = Executors.newSingleThreadExecutor();
 
     private static Bitmap lastScreenShot;
@@ -180,7 +191,11 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             }
         });
 
-        initTensorFlowAndLoadModel();
+        if (classifier == null) {
+            initTensorFlowAndLoadModel();
+        } else {
+            btnDetectObject.setVisibility(View.VISIBLE);
+        }
     }
 
     private void showLoadingDialog() {
@@ -240,18 +255,12 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             public void run() {
                 if (classifier != null) {
                     classifier.close();
-                    classifier = null;
                 }
             }
         });
     }
 
     private void initTensorFlowAndLoadModel() {
-        if (classifier != null) {
-            btnDetectObject.setVisibility(View.VISIBLE);
-            return;
-        }
-
         // Show the loading spinner for the tensorflow model.
         loadingTFSpinner.setVisibility(View.VISIBLE);
         executor.execute(new Runnable() {
@@ -383,6 +392,9 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             try {
                 Bitmap bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.length);
                 scaledBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
+                if (classifier == null) { // last minute init.
+                    initTensorFlowAndLoadModel();
+                }
                 results = classifier.recognizeImage(scaledBitmap);
                 Timber.d("classification results: " + results.toString());
             } catch (Exception e) {

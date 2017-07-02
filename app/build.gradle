@@ -3,10 +3,10 @@ apply plugin: 'com.android.application'
 android {
     signingConfigs {
         config {
-            keyAlias 'cookie'
-            keyPassword '111111'
-            storeFile file('/Users/cbuonocore/keyvault/keystore.jks')
-            storePassword '111111'
+            keyAlias appKeyAlias
+            keyPassword appKeyPassword
+            storeFile file(appKeyStore)
+            storePassword appKeyStorePassword
         }
     }
     compileSdkVersion 25
@@ -43,12 +43,6 @@ repositories {
     jcenter()
 }
 
-// https://github.com/Nightonke/BoomMenu
-//compile 'com.zys:brokenview:1.0.3'
-//    compile 'com.google.firebase:firebase-core:10.2.4'
-//    compile 'com.google.firebase:firebase-ads:10.2.4'
-//compile 'com.android.support:appcompat-v7:25.3.1'
-//compile 'com.github.kittinunf.fuel:fuel:1.7.0'
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
