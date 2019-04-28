@@ -32,7 +32,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.method.ScrollingMovementMethod;
 import android.view.Gravity;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -322,7 +321,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         soundPool.setOnLoadCompleteListener(new OnLoadCompleteListener() {
             @Override
             public void onLoadComplete(SoundPool soundPool, int sampleId,
-                    int status) {
+                                       int status) {
                 poolReady = true;
             }
         });
@@ -406,11 +405,12 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         }
 
         private void showResultToast(final String message, final int color, final int resultIcon) {
+            // TODO: verify dimension and layout of the result Toast message after classification.
             SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_BUTTON)
                     .setText(message)
                     .setDuration(Style.DURATION_VERY_LONG)
-//                    .setHeight(300)
-//                    .setTextSize(30)
+                    .setHeight(200)
+                    .setTextSize(Style.TEXTSIZE_LARGE)
                     .setTextColor(getResources().getColor(R.color.white))
                     .setIconResource(resultIcon)
                     .setGravity(Gravity.TOP)
@@ -421,8 +421,9 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         protected void onPostExecute(final ClassificationTaskResult exitCode) {
             switch (exitCode) {
                 case SUCCESS:
+                    // We were able to successfully render a classification result on the taken image.
                     // If the foundResult is sufficiently confident, show success screen.
-                    final Recognition foundResult  = renderClassificationResultDisplay(results);
+                    final Recognition foundResult = renderClassificationResultDisplay(results);
                     if (foundResult != null) {
                         shareButton.setBackgroundColor(getResources().getColor(R.color.md_green_500));
                         shareButton.setText(getString(R.string.share_success));
@@ -434,19 +435,16 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                     }
                     resultLayout.setVisibility(View.VISIBLE);
                     imageViewResult.setImageBitmap(scaledBitmap);
-                    shareButton.setOnClickListener(new OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            // Image description used for the social share message.
-                            final String imageDescription;
-                            if (foundResult != null) {
-                                imageDescription = "Successful find!";
-                            } else {
-                                imageDescription = "I failed";
-                            }
-                            Timber.d("hit share button, share message set to: " + imageDescription);
-                            shareClassifierResult(imageDescription);
+                    shareButton.setOnClickListener(v -> {
+                        // Image description used for the social share message.
+                        final String imageDescription;
+                        if (foundResult != null) {
+                            imageDescription = "Successful find!";
+                        } else {
+                            imageDescription = "I failed";
                         }
+                        Timber.d("hit share button, share message set to: " + imageDescription);
+                        shareClassifierResult(imageDescription);
                     });
                     // Save the current state of the screen.
                     lastScreenShot = takeShareableScreenshot();
