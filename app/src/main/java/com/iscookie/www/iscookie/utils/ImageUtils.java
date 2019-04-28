@@ -31,7 +31,6 @@ public class ImageUtils {
         Random r = new Random();
         final int index = r.nextInt(LOADING_MESSAGES.size());
         return LOADING_MESSAGES.get(index);
-
     }
 
     static {

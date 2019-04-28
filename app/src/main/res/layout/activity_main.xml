@@ -7,15 +7,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!--Order of elements on the page is defined by the order in which the items are placed in this file-->
-    <com.flurgle.camerakit.CameraView
-        android:id="@+id/cameraView"
+     <!-- keep screen awake while CameraKitView is active -->
+    <com.camerakit.CameraKitView
+        android:id="@+id/camera"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:adjustViewBounds="true"
-        camerakit:ckJpegQuality="100"
-        camerakit:ckMethod="standard"
-        camerakit:ckZoom="pinch" />
+        android:keepScreenOn="true"
+    app:camera_flash="auto"
+    app:camera_facing="back"
+    app:camera_focus="continuous"
+    app:camera_permissions="camera" />
 
     <ImageView
         android:id="@+id/topVolumeView"
@@ -127,6 +129,7 @@
 
             </FrameLayout>
 
+            <!--TODO: readd button if desired-->
             <Button
                 android:id="@+id/btnToggleCamera"
                 android:layout_width="match_parent"
@@ -135,7 +138,7 @@
                 android:text="@string/toggle_camera"
                 android:textAllCaps="false"
                 android:textColor="@android:color/black"
-                android:visibility="visible" />
+                android:visibility="gone" />
 
         </LinearLayout>
 

@@ -41,8 +41,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
-import com.flurgle.camerakit.CameraListener;
-import com.flurgle.camerakit.CameraView;
+import com.camerakit.CameraKit;
+import com.camerakit.CameraKitView;
 import com.github.jinatonic.confetti.CommonConfetti;
 import com.github.jinatonic.confetti.ConfettiManager;
 import com.github.johnpersano.supertoasts.library.Style;
@@ -53,7 +53,9 @@ import com.iscookie.www.iscookie.utils.ClassificationTaskResult;
 import com.iscookie.www.iscookie.utils.Classifier;
 import com.iscookie.www.iscookie.utils.Classifier.Recognition;
 import com.iscookie.www.iscookie.utils.ImageUtils;
+import com.iscookie.www.iscookie.utils.Logger;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -63,25 +65,17 @@ import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity implements ConfettiActivity {
 
-    // for custom model refer to: https://github.com/tensorflow/tensorflow/issues/2883
-//    private static final int INPUT_SIZE = 299;
-//    private static final int IMAGE_MEAN = 128;
-//    private static final float IMAGE_STD = 128;
-//    private static final String INPUT_NAME = "Mul";
-//    private static final String OUTPUT_NAME = "final_result";
+    private static final Logger LOGGER = new Logger();
 
-//    private static final String MODEL_FILE = "file:///android_asset/stripped_retrained_graph.pb"; //tensorflow_inception_graph.pb";
-//    private static final String LABEL_FILE = "file:///android_asset/retrained_labels.txt"; // imagenet_comp_graph_label_strings.txt";
+    // for custom model refer to: https://github.com/tensorflow/tensorflow/issues/2883
 
     // Values for google's inception model (from the original paper findings).
     private static final int INPUT_SIZE = 224;
-    private static final int IMAGE_MEAN = 117;
-    private static final float IMAGE_STD = 1;
-    private static final String INPUT_NAME = "input";
-    private static final String OUTPUT_NAME = "output";
 
-    private static final String MODEL_FILE = "file:///android_asset/tensorflow_inception_graph.pb";
-    private static final String LABEL_FILE = "file:///android_asset/imagenet_comp_graph_label_strings.txt";
+    // Default parameters.
+    private Classifier.Model model = Classifier.Model.QUANTIZED;
+    private Classifier.Device device = Classifier.Device.CPU;
+    private int numThreads = 1;
 
     private static final float CONFIDENCE_THRESHOLD = .3f;
 
@@ -99,9 +93,10 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private TextView textViewResult;
     private Button btnDetectObject;
     private Button btnToggleCamera;
-    private SpinKitView loadingTFSpinner;
+    private SpinKitView loadingSpinner;
     private ImageView imageViewResult;
-    private CameraView cameraView;
+    private CameraKitView cameraKitView;
+
 
     private FancyButton shareButton;
 
@@ -131,18 +126,15 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         Timber.d("onCreate, after setContentView");
 
         mainContainer = (ViewGroup) findViewById(R.id.container);
-        cameraView = (CameraView) findViewById(R.id.cameraView);
-        // cameraView.refreshDrawableState();
+        cameraKitView = (CameraKitView) findViewById(R.id.camera);
+        // cameraKitView.refreshDrawableState();
 
         topVolumeView = (ImageView) findViewById(R.id.topVolumeView);
 //        topVolumeView.setImageDrawable(); // set volume mute/unmute image based on initial mutesetting.
-        topVolumeView.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Timber.d("muted: " + isMuted);
-                isMuted = !isMuted;
-                // TODO: change the mute logo to muted or unmuted.
-            }
+        topVolumeView.setOnClickListener(v -> {
+            Timber.d("muted: " + isMuted);
+            isMuted = !isMuted;
+            // TODO: change the mute logo to muted or unmuted.
         });
 
         cameraActionLayout = (LinearLayout) findViewById(R.id.cameraActionLayout);
@@ -156,38 +148,35 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 
         btnToggleCamera = (Button) findViewById(R.id.btnToggleCamera);
         btnDetectObject = (Button) findViewById(R.id.btnDetectObject);
-        loadingTFSpinner = (SpinKitView) findViewById(R.id.loadingSpinner);
+        loadingSpinner = (SpinKitView) findViewById(R.id.loadingSpinner);
 
         btnDetectObject.setVisibility(View.GONE);
 
-        cameraView.setCameraListener(new CameraListener() {
-            @Override
-            public void onPictureTaken(byte[] picture) {
-                showLoadingDialog();
-                super.onPictureTaken(picture);
+//        cameraKitView.setCameraListener(new CameraKitView.CameraListener() {
+//            @Override
+//            public void onPictureTaken(byte[] picture) {
+//                showLoadingDialog();
+//                Timber.d("starting ClassifyImageTask with picture length " + picture.length);
+//                new ClassifyImageTask().execute(picture);
+//            }
+//        });
 
-                Timber.d("starting ClassifyImageTask with picture length " + picture.length);
-                new ClassifyImageTask().execute(picture);
-            }
-        });
+        btnToggleCamera.setOnClickListener(v -> cameraKitView.toggleFacing());
+        // set default facing direction.
+        cameraKitView.setFacing(CameraKit.FACING_BACK);
 
-        btnToggleCamera.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                cameraView.toggleFacing();
-            }
-        });
-        btnDetectObject.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try {
-                    cameraView.captureImage();
-                } catch (Exception e) {
-                    makeToast(getString(R.string.camera_error));
-                    // Attempt to restart the camera after a failed image retrieval.
-                    cameraView.stop();
-                    cameraView.start();
-                }
+        btnDetectObject.setOnClickListener(v -> {
+            try {
+                cameraKitView.captureImage((cameraKitView, picture) -> {
+                    showLoadingDialog();
+                    Timber.d("starting ClassifyImageTask with picture length " + picture.length);
+                    new ClassifyImageTask().execute(picture);
+                });
+            } catch (Exception e) {
+                makeToast(getString(R.string.camera_error));
+                // Attempt to restart the camera after a failed image retrieval.
+                cameraKitView.onStop();
+                cameraKitView.onStart();
             }
         });
 
@@ -234,14 +223,26 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        cameraKitView.onStart();
+    }
+
+    @Override
+    protected void onStop() {
+        cameraKitView.onStop();
+        super.onStop();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
-        cameraView.start();
+        cameraKitView.onResume();
     }
 
     @Override
     protected void onPause() {
-        cameraView.stop();
+        cameraKitView.onStop();
         hideLoadingDialog();
         super.onPause();
     }
@@ -250,42 +251,34 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     protected void onDestroy() {
         super.onDestroy();
         hideLoadingDialog();
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                if (classifier != null) {
-                    classifier.close();
-                }
+        executor.execute(() -> {
+            if (classifier != null) {
+                classifier.close();
             }
         });
     }
 
     private void initTensorFlowAndLoadModel() {
-        // Show the loading spinner for the tensorflow model.
-        loadingTFSpinner.setVisibility(View.VISIBLE);
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    classifier = TensorFlowImageClassifier.create(
-                            getAssets(),
-                            MODEL_FILE,
-                            LABEL_FILE,
-                            INPUT_SIZE,
-                            IMAGE_MEAN,
-                            IMAGE_STD,
-                            INPUT_NAME,
-                            OUTPUT_NAME);
-                    doneLoadingClassifier();
-                } catch (final Exception e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            makeToast(getString(R.string.classifier_error));
-                            Timber.e("Error creating classifier: " + e.toString());
-                        }
-                    });
-                }
+        loadingSpinner.setVisibility(View.VISIBLE);
+        executor.execute(() -> {
+            if (classifier != null) {
+                LOGGER.d("Closing classifier.");
+                classifier.close();
+                classifier = null;
+            }
+
+            // Default to float model if quantized is not supported.
+            if (device == Classifier.Device.GPU && model == Classifier.Model.QUANTIZED) {
+                LOGGER.d("Creating float model: GPU doesn't support quantized models.");
+                model = Classifier.Model.FLOAT;
+            }
+
+            try {
+                LOGGER.d("Creating classifier (model=%s, device=%s, numThreads=%d)", model, device, numThreads);
+                classifier = Classifier.create(MainActivity.this, model, device, numThreads);
+                doneLoadingClassifier();
+            } catch (IOException e) {
+                LOGGER.e(e, "Failed to create classifier.");
             }
         });
     }
@@ -295,13 +288,10 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     }
 
     private void doneLoadingClassifier() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                Timber.d("done loading classifier");
-                loadingTFSpinner.setVisibility(View.GONE);
-                btnDetectObject.setVisibility(View.VISIBLE);
-            }
+        runOnUiThread(() -> {
+            Timber.d("done loading classifier");
+            loadingSpinner.setVisibility(View.GONE);
+            btnDetectObject.setVisibility(View.VISIBLE);
         });
     }
 
@@ -421,10 +411,10 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                     .setDuration(Style.DURATION_VERY_LONG)
 //                    .setHeight(300)
 //                    .setTextSize(30)
-                    .setTextColor(getColor(R.color.white))
+                    .setTextColor(getResources().getColor(R.color.white))
                     .setIconResource(resultIcon)
                     .setGravity(Gravity.TOP)
-                    .setColor(getColor(color))
+                    .setColor(getResources().getColor(color))
                     .setAnimations(Style.ANIMATIONS_FLY).show();
         }
 
@@ -434,11 +424,11 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                     // If the foundResult is sufficiently confident, show success screen.
                     final Recognition foundResult  = renderClassificationResultDisplay(results);
                     if (foundResult != null) {
-                        shareButton.setBackgroundColor(getColor(R.color.md_green_500));
+                        shareButton.setBackgroundColor(getResources().getColor(R.color.md_green_500));
                         shareButton.setText(getString(R.string.share_success));
                         showResultToast(getString(R.string.target_item) + "!", R.color.md_green_500, R.drawable.check_mark_75);
                     } else {
-                        shareButton.setBackgroundColor(getColor(R.color.md_red_500));
+                        shareButton.setBackgroundColor(getResources().getColor(R.color.md_red_500));
                         shareButton.setText(getString(R.string.share_failure));
                         showResultToast("Not a " + getString(R.string.target_item) + "!", R.color.md_red_500, R.drawable.x_mark_75);
                     }
@@ -507,6 +497,12 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         tweetIntent.setType("image/jpeg");
         tweetIntent.putExtra(Intent.EXTRA_STREAM, uri);
         startActivity(Intent.createChooser(tweetIntent, getString(R.string.share_result_prompt)));
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        cameraKitView.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
 }

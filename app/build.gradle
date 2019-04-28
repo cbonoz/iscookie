@@ -9,16 +9,21 @@ android {
             storePassword appKeyStorePassword
         }
     }
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion 28
     defaultConfig {
         applicationId "com.iscookie.www.iscookie"
         minSdkVersion 21
-        targetSdkVersion 25
+        targetSdkVersion 28
         versionCode 1
-        versionName "1.0.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        versionName "1.0"
         signingConfig signingConfigs.config
+    }
+    aaptOptions {
+        noCompress "tflite"
+    }
+    compileOptions {
+        sourceCompatibility = '1.8'
+        targetCompatibility = '1.8'
     }
     buildTypes {
         release {
@@ -44,29 +49,28 @@ repositories {
 }
 
 dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    })
-
-    compile('io.socket:socket.io-client:0.8.3') {
-        // excluding org.json which is provided by Android
-        exclude group: 'org.json', module: 'json'
+    configurations.all {
+        exclude group: 'com.android.support', module: 'support-v13'
     }
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.android.support:support-annotations:28.0.0'
+    implementation 'com.android.support:design:28.0.0'
 
-    compile 'com.flurgle:camerakit:0.9.13'
-    compile 'com.github.jinatonic.confetti:confetti:1.1.0'
-    compile 'org.tensorflow:tensorflow-android:+'
-    compile 'com.jakewharton.timber:timber:4.5.1'
-    compile 'com.github.ybq:Android-SpinKit:1.1.0'
-    compile 'com.github.johnpersano:supertoasts:2.0'
-    compile 'com.github.medyo:fancybuttons:1.8.3'
-    compile 'com.github.ViksaaSkool:AwesomeSplash:v1.0.0'
-    compile 'com.afollestad.material-dialogs:core:0.9.4.4'
-    compile 'com.android.support:cardview-v7:25.3.1'
-    compile 'com.android.support:recyclerview-v7:25.3.1'
-    compile 'com.android.support:support-v4:25.3.1'
-    compile 'com.android.support:design:25.3.1'
-    testCompile 'junit:junit:4.12'
-    androidTestCompile 'com.android.support:support-annotations:25.3.1'
+//    implementation 'com.wonderkiln:camerakit:0.11.1'
+    implementation 'com.camerakit:camerakit:1.0.0-beta3.10'
+    implementation 'com.camerakit:jpegkit:0.1.0'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.0.0'
+    implementation 'com.github.medyo:fancybuttons:1.8.3'
+    implementation 'com.jakewharton.timber:timber:4.5.1'
+    implementation 'com.github.ybq:Android-SpinKit:1.2.0'
+    implementation 'com.github.jinatonic.confetti:confetti:1.1.2'
+    implementation 'com.github.johnpersano:supertoasts:2.0'
+    implementation 'com.afollestad.material-dialogs:core:0.9.4.4'
+    implementation 'com.github.wailbabou:Splasher:0.1.2'
+
+    // Build off of nightly TensorFlow Lite
+    implementation 'org.tensorflow:tensorflow-lite:0.0.0-nightly'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:0.0.0-nightly'
 }
