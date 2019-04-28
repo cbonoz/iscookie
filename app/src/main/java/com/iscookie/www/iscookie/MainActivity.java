@@ -189,7 +189,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 
     private void showLoadingDialog() {
         loadingDialog = new MaterialDialog.Builder(MainActivity.this)
-                .title(R.string.loading)
+                .title(R.string.processing)
                 .content(ImageUtils.getRandomLoadingMessage())
                 .progress(true, 0).show();
     }
