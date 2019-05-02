@@ -56,9 +56,9 @@ import com.iscookie.www.iscookie.utils.Logger;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
+import io.reactivex.Observable;
+import io.reactivex.schedulers.Schedulers;
 import mehdi.sakout.fancybuttons.FancyButton;
 import timber.log.Timber;
 
@@ -79,7 +79,6 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     private static final float CONFIDENCE_THRESHOLD = .3f;
 
     private static Classifier classifier; // Tensorflow classifier.
-    private Executor executor = Executors.newSingleThreadExecutor();
 
     private static Bitmap lastScreenShot;
 
@@ -151,15 +150,6 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
 
         btnDetectObject.setVisibility(View.GONE);
 
-//        cameraKitView.setCameraListener(new CameraKitView.CameraListener() {
-//            @Override
-//            public void onPictureTaken(byte[] picture) {
-//                showLoadingDialog();
-//                Timber.d("starting ClassifyImageTask with picture length " + picture.length);
-//                new ClassifyImageTask().execute(picture);
-//            }
-//        });
-
         btnToggleCamera.setOnClickListener(v -> cameraKitView.toggleFacing());
         // set default facing direction.
         cameraKitView.setFacing(CameraKit.FACING_BACK);
@@ -179,11 +169,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             }
         });
 
-        if (classifier == null) {
-            initTensorFlowAndLoadModel();
-        } else {
-            btnDetectObject.setVisibility(View.VISIBLE);
-        }
+
     }
 
     private void showLoadingDialog() {
@@ -236,6 +222,15 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     @Override
     protected void onResume() {
         super.onResume();
+        if (classifier == null) {
+            loadingSpinner.setVisibility(View.VISIBLE);
+            initTensorFlowAndLoadModel()
+                    .doOnComplete(() -> runOnUiThread(this::doneLoadingClassifier))
+                    .subscribeOn(Schedulers.io())
+                    .subscribe();
+        } else {
+            btnDetectObject.setVisibility(View.VISIBLE);
+        }
         cameraKitView.onResume();
     }
 
@@ -250,16 +245,19 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     protected void onDestroy() {
         super.onDestroy();
         hideLoadingDialog();
-        executor.execute(() -> {
+        Observable.fromCallable(() -> {
             if (classifier != null) {
                 classifier.close();
             }
-        });
+            return classifier;
+        })
+                .subscribeOn(Schedulers.io())
+                .subscribe();
+
     }
 
-    private void initTensorFlowAndLoadModel() {
-        loadingSpinner.setVisibility(View.VISIBLE);
-        executor.execute(() -> {
+    private Observable<Classifier> initTensorFlowAndLoadModel() {
+        return Observable.fromCallable(() -> {
             if (classifier != null) {
                 LOGGER.d("Closing classifier.");
                 classifier.close();
@@ -275,10 +273,11 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             try {
                 LOGGER.d("Creating classifier (model=%s, device=%s, numThreads=%d)", model, device, numThreads);
                 classifier = Classifier.create(MainActivity.this, model, device, numThreads);
-                doneLoadingClassifier();
+                return classifier;
             } catch (IOException e) {
                 LOGGER.e(e, "Failed to create classifier.");
             }
+            return null;
         });
     }
 
@@ -305,6 +304,9 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
     }
 
     private void playSound(final int soundId) {
+        if (isMuted) {
+            return;
+        }
         final float actualVolume = (float) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         final float maxVolume = (float) audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         final float volume = actualVolume / maxVolume;
@@ -381,14 +383,18 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
             try {
                 Bitmap bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.length);
                 scaledBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
-                if (classifier == null) { // last minute init.
-                    initTensorFlowAndLoadModel();
+                if (classifier == null || classifier.getInterpreter() == null) { // last minute init.
+                    initTensorFlowAndLoadModel().subscribe();
                 }
                 results = classifier.recognizeImage(scaledBitmap);
                 Timber.d("classification results: " + results.toString());
             } catch (Exception e) {
                 Timber.e("error in classification task: " + e.toString());
-                errorMessage = e.toString();
+                if (e instanceof NullPointerException) {
+                    errorMessage = "Oops, something went wrong, please reopen the app.";
+                } else {
+                    errorMessage = e.toString() + ". If the error occurs again, please reopen the app.";
+                }
                 return ClassificationTaskResult.FAIL;
             }
 
@@ -407,11 +413,12 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
         private void showResultToast(final String message, final int color, final int resultIcon) {
             // TODO: verify dimension and layout of the result Toast message after classification.
             SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_BUTTON)
-                    .setText(message)
                     .setDuration(Style.DURATION_VERY_LONG)
-                    .setHeight(200)
-                    .setTextSize(Style.TEXTSIZE_LARGE)
+                    .setFrame(Style.FRAME_LOLLIPOP)
+                    .setText(message)
+                    .setTextSize(Style.TEXTSIZE_VERY_LARGE)
                     .setTextColor(getResources().getColor(R.color.white))
+                    .setIconPosition(Style.ICONPOSITION_LEFT)
                     .setIconResource(resultIcon)
                     .setGravity(Gravity.TOP)
                     .setColor(getResources().getColor(color))
@@ -435,6 +442,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                     }
                     resultLayout.setVisibility(View.VISIBLE);
                     imageViewResult.setImageBitmap(scaledBitmap);
+
                     shareButton.setOnClickListener(v -> {
                         // Image description used for the social share message.
                         final String imageDescription;
@@ -447,7 +455,7 @@ public class MainActivity extends AppCompatActivity implements ConfettiActivity 
                         shareClassifierResult(imageDescription);
                     });
                     // Save the current state of the screen.
-                    lastScreenShot = takeShareableScreenshot();
+//                    lastScreenShot = takeShareableScreenshot();
                     break;
                 case FAIL: // Software error - Unable to classify image.
                     resultLayout.setVisibility(View.GONE);
